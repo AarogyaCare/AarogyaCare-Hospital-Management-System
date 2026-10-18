@@ -1,0 +1,4 @@
+Workload,Concurrent Users,Total Requests,Success,Failed,Error Rate (%),Throughput (RPS),P50 Latency (ms),Avg Latency (ms),P95 Latency (ms),P99 Latency (ms),CPU (%),RAM (%)
+Low Workload,10,1712,576,1136,66.36,143.01,10.27,11.38,19.84,26.93,46.9,83.6
+Medium Workload,50,1375,458,917,66.69,74.92,141.83,198.74,574.28,1005.61,49.9,84.0
+High Workload,100,2954,936,2018,68.31,113.31,190.24,256.51,706.84,1089.61,42.6,84.2

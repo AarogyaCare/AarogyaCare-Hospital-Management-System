@@ -1,0 +1,59 @@
+{
+  "database_vs_cache": {
+    "comparison": "Database Direct Query vs Key-Value Cache",
+    "iterations": 300,
+    "baseline_db": {
+      "avg_latency_ms": 0.578,
+      "p95_latency_ms": 1.08,
+      "throughput_rps": 1731.0,
+      "database_query_volume": 300
+    },
+    "optimized_cache": {
+      "avg_latency_ms": 0.004,
+      "p95_latency_ms": 0.004,
+      "throughput_rps": 257201.7,
+      "database_query_volume": 0
+    },
+    "change_pct": {
+      "avg_latency": -99.3,
+      "p95_latency": -99.6,
+      "throughput": 14758.7,
+      "database_query_reduction_pct": 100.0
+    },
+    "trade_offs": "Requires explicit commit-then-invalidate cache hygiene, additional Redis memory footprint, and safeguards against serving stale appointment slots or inventory counts."
+  },
+  "search_vs_debounce": {
+    "comparison": "Raw Keystroke Queries vs Debounced Trie Autocomplete",
+    "keystrokes_typed": 10,
+    "baseline_raw_search": {
+      "api_calls_sent": 10,
+      "avg_query_latency_ms": 0.773,
+      "total_processing_time_ms": 7.725
+    },
+    "optimized_debounced_autocomplete": {
+      "api_calls_sent": 1,
+      "avg_query_latency_ms": 0.052,
+      "total_processing_time_ms": 0.052
+    },
+    "change_pct": {
+      "api_call_reduction_pct": 90.0,
+      "total_processing_time_reduction_pct": 99.3
+    },
+    "trade_offs": "Introduces 250ms perception delay before suggestion popup appears; Trie index requires periodic synchronization when new doctors or medicines are onboarded."
+  },
+  "indexed_vs_non_indexed": {
+    "comparison": "Non-Indexed Scan vs Indexed Query",
+    "baseline_non_indexed": {
+      "avg_latency_ms": 0.031,
+      "scan_type": "Full Table Scan"
+    },
+    "optimized_indexed": {
+      "avg_latency_ms": 0.0369,
+      "scan_type": "B-Tree Index Lookup"
+    },
+    "change_pct": {
+      "latency_reduction_pct": -18.9
+    },
+    "trade_offs": "Indexes consume additional storage and incur modest write overhead on insertions and updates."
+  }
+}

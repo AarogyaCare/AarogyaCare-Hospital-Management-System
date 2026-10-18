@@ -1,0 +1,88 @@
+{
+  "unique_id_generator": {
+    "component": "Unique ID Generator",
+    "sample_size": 50000,
+    "throughput_ids_per_sec": 323517.4,
+    "avg_latency_ms": 0.00309,
+    "collision_count": 0,
+    "uniqueness_rate_pct": 100.0
+  },
+  "rate_limiter": {
+    "component": "Token Bucket Rate Limiter",
+    "burst_total": 145,
+    "accepted_requests": 120,
+    "rejected_requests": 25,
+    "rejection_rate_pct": 17.24,
+    "emergency_bypass_accepted": 50,
+    "emergency_bypass_rate_pct": 100.0,
+    "decision_latency_ms": {
+      "avg": 0.001,
+      "p95": 0.0019
+    },
+    "total_system_decisions": 195,
+    "total_system_throttled": 25
+  },
+  "key_value_store": {
+    "component": "Key-Value Store (Redis-Compatible)",
+    "cold_miss_latency_ms": 0.0073,
+    "warm_hit_latency_ms": {
+      "avg": 0.0019,
+      "p95": 0.0033,
+      "min": 0.0012,
+      "max": 0.0427
+    },
+    "invalidation_successful": true,
+    "system_hits": 1000,
+    "system_misses": 2,
+    "system_hit_ratio_pct": 99.8
+  },
+  "consistent_hashing": {
+    "component": "Consistent Hashing Ring",
+    "num_physical_nodes": 3,
+    "virtual_nodes_per_node": 150,
+    "total_virtual_nodes": 450,
+    "total_keys_tested": 3000,
+    "distribution": {
+      "Node-B": 1026,
+      "Node-C": 954,
+      "Node-A": 1020
+    },
+    "standard_deviation": 39.95,
+    "imbalance_pct": 7.2,
+    "node_removal_remapped_keys": 954,
+    "node_removal_remapping_pct": 31.8,
+    "theoretical_remapping_pct": 33.33,
+    "avg_ring_lookup_latency_ms": 0.00222
+  },
+  "url_shortener": {
+    "component": "URL Shortener Service",
+    "avg_generation_latency_ms": 0.0138,
+    "avg_resolution_latency_ms": 0.005,
+    "generation_collision_count": 0,
+    "open_redirect_prevention_verified": true,
+    "internal_route_allowed_verified": true,
+    "code_entropy_combinations": "56.8 Billion (Base62^6)"
+  },
+  "web_crawler": {
+    "component": "Web Crawler Worker",
+    "ssrf_protection_rate_pct": 100.0,
+    "unauthorized_domains_blocked": true,
+    "content_deduplication_verified": true,
+    "allowed_seed_verified": true,
+    "total_documents_indexed": 3,
+    "total_crawls_executed": 0
+  },
+  "autocomplete": {
+    "component": "Normalized Autocomplete Trie",
+    "evaluation_queries_tested": 6,
+    "lookup_latency_ms": {
+      "avg": 0.0347,
+      "p95": 0.0347
+    },
+    "top1_accuracy_pct": 100.0,
+    "top5_accuracy_pct": 100.0,
+    "empty_result_rate_pct": 0.0,
+    "client_debounce_call_reduction_pct": 90.0,
+    "privacy_isolation_pii_exposed_count": 0
+  }
+}

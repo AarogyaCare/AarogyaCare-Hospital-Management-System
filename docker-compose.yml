@@ -1,0 +1,80 @@
+version: '3.8'
+
+services:
+  # ---------------------------------------------------------------------------
+  # 1. Authoritative Data Source of Truth (MongoDB 7.0 Community)
+  # ---------------------------------------------------------------------------
+  db:
+    image: mongo:7.0
+    container_name: aarogya-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # 2. Redis Key-Value Store & Rate Limiting Cache
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: aarogya-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # 3. Backend REST API Core (Java 21 / Spring Boot 3.4.3)
+  # ---------------------------------------------------------------------------
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: aarogya-backend
+    restart: unless-stopped
+    environment:
+      SERVER_PORT: ${SERVER_PORT:-8000}
+      MONGODB_URI: mongodb://db:27017/aarogya
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      SPRING_DATA_MONGODB_URI: mongodb://db:27017/aarogya
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      AAROGYA_SECURITY_JWT_SECRET: ${AAROGYA_SECURITY_JWT_SECRET:?Set AAROGYA_SECURITY_JWT_SECRET in your environment}
+    ports:
+      - "${SERVER_PORT:-8000}:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ---------------------------------------------------------------------------
+  # 4. Frontend Client Application (React 19 + TypeScript + Vite)
+  # ---------------------------------------------------------------------------
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: aarogya-frontend
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_API_BASE_URL: http://localhost:8000
+    depends_on:
+      - backend
+
+volumes:
+  mongo_data:
+    name: aarogya_mongo_data

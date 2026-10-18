@@ -1,0 +1,51 @@
+{
+  "experiment": "Controlled Cache Node Failure and Rebalancing",
+  "keys_evaluated": 1500,
+  "stage_1_steady_state": {
+    "active_nodes": [
+      "Node-A",
+      "Node-B",
+      "Node-C"
+    ],
+    "hit_ratio_pct": 100.0,
+    "avg_lookup_latency_ms": 0.0035,
+    "distribution": {
+      "Node-B": 491,
+      "Node-C": 481,
+      "Node-A": 528
+    }
+  },
+  "stage_2_node_c_failure": {
+    "failed_node": "Node-C",
+    "surviving_nodes": [
+      "Node-A",
+      "Node-B"
+    ],
+    "remapped_keys_pct": 32.07,
+    "initial_hit_ratio_drop_pct": 67.93,
+    "database_fallback_query_count": 481,
+    "data_integrity_loss_count": 0,
+    "avg_latency_ms": 0.0036
+  },
+  "stage_3_surviving_nodes_steady": {
+    "active_nodes": [
+      "Node-A",
+      "Node-B"
+    ],
+    "repopulated_hit_ratio_pct": 100.0,
+    "avg_lookup_latency_ms": 0.0043
+  },
+  "stage_4_restoration": {
+    "active_nodes": [
+      "Node-A",
+      "Node-B",
+      "Node-C"
+    ],
+    "stabilized_distribution": {
+      "Node-B": 491,
+      "Node-C": 481,
+      "Node-A": 528
+    }
+  },
+  "correctness_guarantee": "Zero appointment slot conflicts, zero stock anomalies, and zero invoice duplicates observed during node failure."
+}

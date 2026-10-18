@@ -1,0 +1,55 @@
+server:
+  port: ${SERVER_PORT:8000}
+
+spring:
+  application:
+    name: aarogya-care-backend
+
+  data:
+    mongodb:
+      uri: ${MONGODB_URI:mongodb://localhost:27017/aarogya}
+      auto-index-creation: true
+
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 2000ms
+
+aarogya:
+  security:
+    jwt-secret: ${AAROGYA_SECURITY_JWT_SECRET:${JWT_SECRET}}
+    jwt-expiration-ms: ${AAROGYA_SECURITY_JWT_EXPIRATION_MS:86400000} # 24 hours
+  crawler:
+    allowed-domains:
+      - who.int
+      - cdc.gov
+      - mohfw.gov.in
+      - aarogyacare.org
+      - localhost
+      - 127.0.0.1
+    max-depth: 2
+    max-pages: 20
+    timeout-ms: 3000
+  rate-limiter:
+    default-capacity: 100
+    default-refill-rate: 10
+    auth-capacity: 20
+    auth-refill-rate: 2
+    emergency-capacity: 500
+    emergency-refill-rate: 50
+
+springdoc:
+  api-docs:
+    path: /api/v1/openapi.json
+  swagger-ui:
+    path: /docs
+    operationsSorter: method
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always

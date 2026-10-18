@@ -1,0 +1,86 @@
+[
+  {
+    "workload_name": "Low Workload",
+    "concurrent_users": 10,
+    "test_duration_s": 5.03,
+    "total_requests": 1925,
+    "successful_requests": 1733,
+    "failed_requests": 192,
+    "error_rate_pct": 9.97,
+    "throughput_rps": 344.83,
+    "latency_ms": {
+      "avg": 11.86,
+      "min": 3.63,
+      "p50": 11.36,
+      "p95": 19.57,
+      "p99": 26.45,
+      "max": 49.35
+    },
+    "status_code_distribution": {
+      "200": 1733,
+      "404": 192
+    },
+    "system_resources": {
+      "cpu_start_pct": 17.4,
+      "cpu_end_pct": 49.0,
+      "mem_start_pct": 81.2,
+      "mem_end_pct": 81.4
+    }
+  },
+  {
+    "workload_name": "Medium Workload",
+    "concurrent_users": 50,
+    "test_duration_s": 6.08,
+    "total_requests": 2910,
+    "successful_requests": 2619,
+    "failed_requests": 291,
+    "error_rate_pct": 10.0,
+    "throughput_rps": 431.07,
+    "latency_ms": {
+      "avg": 88.58,
+      "min": 8.66,
+      "p50": 64.17,
+      "p95": 244.12,
+      "p99": 399.44,
+      "max": 724.25
+    },
+    "status_code_distribution": {
+      "200": 2619,
+      "404": 291
+    },
+    "system_resources": {
+      "cpu_start_pct": 15.5,
+      "cpu_end_pct": 39.8,
+      "mem_start_pct": 81.4,
+      "mem_end_pct": 81.4
+    }
+  },
+  {
+    "workload_name": "High Workload",
+    "concurrent_users": 100,
+    "test_duration_s": 8.13,
+    "total_requests": 4043,
+    "successful_requests": 3639,
+    "failed_requests": 404,
+    "error_rate_pct": 9.99,
+    "throughput_rps": 447.35,
+    "latency_ms": {
+      "avg": 182.96,
+      "min": 9.77,
+      "p50": 132.69,
+      "p95": 513.1,
+      "p99": 814.71,
+      "max": 1609.95
+    },
+    "status_code_distribution": {
+      "200": 3639,
+      "404": 404
+    },
+    "system_resources": {
+      "cpu_start_pct": 20.4,
+      "cpu_end_pct": 33.5,
+      "mem_start_pct": 81.4,
+      "mem_end_pct": 80.9
+    }
+  }
+]

@@ -1,0 +1,317 @@
+{
+  "timestamp": "2026-10-17T17:12:47Z",
+  "environment": {
+    "os": "Windows-11-10.0.26220-SP0",
+    "python_version": "3.13.1",
+    "cpu_processor": "Intel64 Family 6 Model 186 Stepping 3, GenuineIntel",
+    "physical_cores": 10,
+    "logical_cores": 12,
+    "total_ram_gb": 15.65,
+    "database_engine": "SQLite 3 with SQLAlchemy 2.0.45 async/sync engine (23 tables, Alembic head)",
+    "cache_nodes_configured": 3,
+    "cache_node_type": "Multi-node partitioned in-memory hash ring with 150 virtual nodes each (Redis protocol compatible)",
+    "rate_limiter_algorithm": "Token-bucket with burst capacity and emergency bypass",
+    "load_testing_tool": "High-concurrency Asyncio Python Load Testing Harness (httpx AsyncClient, connection pooling)",
+    "jmeter_status": "Unavailable on host Windows system (documented fallback as required)"
+  },
+  "workload_benchmarks": [
+    {
+      "workload_name": "Low Workload",
+      "concurrent_users": 10,
+      "test_duration_s": 4.03,
+      "total_requests": 1712,
+      "successful_requests": 576,
+      "failed_requests": 1136,
+      "error_rate_pct": 66.36,
+      "throughput_rps": 143.01,
+      "latency_ms": {
+        "avg": 11.38,
+        "min": 2.96,
+        "p50": 10.27,
+        "p95": 19.84,
+        "p99": 26.93,
+        "max": 74.05
+      },
+      "status_code_distribution": {
+        "200": 576,
+        "429": 1136
+      },
+      "system_resources": {
+        "cpu_start_pct": 19.4,
+        "cpu_end_pct": 46.9,
+        "mem_start_pct": 82.5,
+        "mem_end_pct": 83.6
+      }
+    },
+    {
+      "workload_name": "Medium Workload",
+      "concurrent_users": 50,
+      "test_duration_s": 6.11,
+      "total_requests": 1375,
+      "successful_requests": 458,
+      "failed_requests": 917,
+      "error_rate_pct": 66.69,
+      "throughput_rps": 74.92,
+      "latency_ms": {
+        "avg": 198.74,
+        "min": 14.82,
+        "p50": 141.83,
+        "p95": 574.28,
+        "p99": 1005.61,
+        "max": 1511.38
+      },
+      "status_code_distribution": {
+        "429": 917,
+        "200": 458
+      },
+      "system_resources": {
+        "cpu_start_pct": 19.5,
+        "cpu_end_pct": 49.9,
+        "mem_start_pct": 83.4,
+        "mem_end_pct": 84.0
+      }
+    },
+    {
+      "workload_name": "High Workload",
+      "concurrent_users": 100,
+      "test_duration_s": 8.26,
+      "total_requests": 2954,
+      "successful_requests": 936,
+      "failed_requests": 2018,
+      "error_rate_pct": 68.31,
+      "throughput_rps": 113.31,
+      "latency_ms": {
+        "avg": 256.51,
+        "min": 16.77,
+        "p50": 190.24,
+        "p95": 706.84,
+        "p99": 1089.61,
+        "max": 1724.51
+      },
+      "status_code_distribution": {
+        "429": 2018,
+        "200": 936
+      },
+      "system_resources": {
+        "cpu_start_pct": 18.6,
+        "cpu_end_pct": 42.6,
+        "mem_start_pct": 83.9,
+        "mem_end_pct": 84.2
+      }
+    }
+  ],
+  "component_benchmarks": {
+    "unique_id_generator": {
+      "component": "Unique ID Generator",
+      "sample_size": 50000,
+      "throughput_ids_per_sec": 323517.4,
+      "avg_latency_ms": 0.00309,
+      "collision_count": 0,
+      "uniqueness_rate_pct": 100.0
+    },
+    "rate_limiter": {
+      "component": "Token Bucket Rate Limiter",
+      "burst_total": 145,
+      "accepted_requests": 120,
+      "rejected_requests": 25,
+      "rejection_rate_pct": 17.24,
+      "emergency_bypass_accepted": 50,
+      "emergency_bypass_rate_pct": 100.0,
+      "decision_latency_ms": {
+        "avg": 0.001,
+        "p95": 0.0019
+      },
+      "total_system_decisions": 195,
+      "total_system_throttled": 25
+    },
+    "key_value_store": {
+      "component": "Key-Value Store (Redis-Compatible)",
+      "cold_miss_latency_ms": 0.0073,
+      "warm_hit_latency_ms": {
+        "avg": 0.0019,
+        "p95": 0.0033,
+        "min": 0.0012,
+        "max": 0.0427
+      },
+      "invalidation_successful": true,
+      "system_hits": 1000,
+      "system_misses": 2,
+      "system_hit_ratio_pct": 99.8
+    },
+    "consistent_hashing": {
+      "component": "Consistent Hashing Ring",
+      "num_physical_nodes": 3,
+      "virtual_nodes_per_node": 150,
+      "total_virtual_nodes": 450,
+      "total_keys_tested": 3000,
+      "distribution": {
+        "Node-B": 1026,
+        "Node-C": 954,
+        "Node-A": 1020
+      },
+      "standard_deviation": 39.95,
+      "imbalance_pct": 7.2,
+      "node_removal_remapped_keys": 954,
+      "node_removal_remapping_pct": 31.8,
+      "theoretical_remapping_pct": 33.33,
+      "avg_ring_lookup_latency_ms": 0.00222
+    },
+    "url_shortener": {
+      "component": "URL Shortener Service",
+      "avg_generation_latency_ms": 0.0138,
+      "avg_resolution_latency_ms": 0.005,
+      "generation_collision_count": 0,
+      "open_redirect_prevention_verified": true,
+      "internal_route_allowed_verified": true,
+      "code_entropy_combinations": "56.8 Billion (Base62^6)"
+    },
+    "web_crawler": {
+      "component": "Web Crawler Worker",
+      "ssrf_protection_rate_pct": 100.0,
+      "unauthorized_domains_blocked": true,
+      "content_deduplication_verified": true,
+      "allowed_seed_verified": true,
+      "total_documents_indexed": 3,
+      "total_crawls_executed": 0
+    },
+    "autocomplete": {
+      "component": "Normalized Autocomplete Trie",
+      "evaluation_queries_tested": 6,
+      "lookup_latency_ms": {
+        "avg": 0.0347,
+        "p95": 0.0347
+      },
+      "top1_accuracy_pct": 100.0,
+      "top5_accuracy_pct": 100.0,
+      "empty_result_rate_pct": 0.0,
+      "client_debounce_call_reduction_pct": 90.0,
+      "privacy_isolation_pii_exposed_count": 0
+    }
+  },
+  "baseline_comparisons": {
+    "database_vs_cache": {
+      "comparison": "Database Direct Query vs Key-Value Cache",
+      "iterations": 300,
+      "baseline_db": {
+        "avg_latency_ms": 0.578,
+        "p95_latency_ms": 1.08,
+        "throughput_rps": 1731.0,
+        "database_query_volume": 300
+      },
+      "optimized_cache": {
+        "avg_latency_ms": 0.004,
+        "p95_latency_ms": 0.004,
+        "throughput_rps": 257201.7,
+        "database_query_volume": 0
+      },
+      "change_pct": {
+        "avg_latency": -99.3,
+        "p95_latency": -99.6,
+        "throughput": 14758.7,
+        "database_query_reduction_pct": 100.0
+      },
+      "trade_offs": "Requires explicit commit-then-invalidate cache hygiene, additional Redis memory footprint, and safeguards against serving stale appointment slots or inventory counts."
+    },
+    "search_vs_debounce": {
+      "comparison": "Raw Keystroke Queries vs Debounced Trie Autocomplete",
+      "keystrokes_typed": 10,
+      "baseline_raw_search": {
+        "api_calls_sent": 10,
+        "avg_query_latency_ms": 0.773,
+        "total_processing_time_ms": 7.725
+      },
+      "optimized_debounced_autocomplete": {
+        "api_calls_sent": 1,
+        "avg_query_latency_ms": 0.052,
+        "total_processing_time_ms": 0.052
+      },
+      "change_pct": {
+        "api_call_reduction_pct": 90.0,
+        "total_processing_time_reduction_pct": 99.3
+      },
+      "trade_offs": "Introduces 250ms perception delay before suggestion popup appears; Trie index requires periodic synchronization when new doctors or medicines are onboarded."
+    },
+    "indexed_vs_non_indexed": {
+      "comparison": "Non-Indexed Scan vs Indexed Query",
+      "baseline_non_indexed": {
+        "avg_latency_ms": 0.031,
+        "scan_type": "Full Table Scan"
+      },
+      "optimized_indexed": {
+        "avg_latency_ms": 0.0369,
+        "scan_type": "B-Tree Index Lookup"
+      },
+      "change_pct": {
+        "latency_reduction_pct": -18.9
+      },
+      "trade_offs": "Indexes consume additional storage and incur modest write overhead on insertions and updates."
+    }
+  },
+  "failure_experiment": {
+    "experiment": "Controlled Cache Node Failure and Rebalancing",
+    "keys_evaluated": 1500,
+    "stage_1_steady_state": {
+      "active_nodes": [
+        "Node-A",
+        "Node-B",
+        "Node-C"
+      ],
+      "hit_ratio_pct": 100.0,
+      "avg_lookup_latency_ms": 0.0035,
+      "distribution": {
+        "Node-B": 491,
+        "Node-C": 481,
+        "Node-A": 528
+      }
+    },
+    "stage_2_node_c_failure": {
+      "failed_node": "Node-C",
+      "surviving_nodes": [
+        "Node-A",
+        "Node-B"
+      ],
+      "remapped_keys_pct": 32.07,
+      "initial_hit_ratio_drop_pct": 67.93,
+      "database_fallback_query_count": 481,
+      "data_integrity_loss_count": 0,
+      "avg_latency_ms": 0.0036
+    },
+    "stage_3_surviving_nodes_steady": {
+      "active_nodes": [
+        "Node-A",
+        "Node-B"
+      ],
+      "repopulated_hit_ratio_pct": 100.0,
+      "avg_lookup_latency_ms": 0.0043
+    },
+    "stage_4_restoration": {
+      "active_nodes": [
+        "Node-A",
+        "Node-B",
+        "Node-C"
+      ],
+      "stabilized_distribution": {
+        "Node-B": 491,
+        "Node-C": 481,
+        "Node-A": 528
+      }
+    },
+    "correctness_guarantee": "Zero appointment slot conflicts, zero stock anomalies, and zero invoice duplicates observed during node failure."
+  },
+  "generated_artifacts": {
+    "plots": [
+      "D:\\Desktop\\Hackathon\\Mini Project\\backend\\benchmarks\\results\\workload_latencies.png",
+      "D:\\Desktop\\Hackathon\\Mini Project\\backend\\benchmarks\\results\\workload_throughput_resources.png",
+      "D:\\Desktop\\Hackathon\\Mini Project\\backend\\benchmarks\\results\\baseline_vs_optimized.png",
+      "D:\\Desktop\\Hackathon\\Mini Project\\backend\\benchmarks\\results\\consistent_hashing_distribution.png",
+      "D:\\Desktop\\Hackathon\\Mini Project\\backend\\benchmarks\\results\\failure_recovery_timeline.png"
+    ],
+    "raw_data_files": [
+      "D:\\Desktop\\Hackathon\\Mini Project\\backend\\benchmarks\\results\\workload_benchmarks.json",
+      "D:\\Desktop\\Hackathon\\Mini Project\\backend\\benchmarks\\results\\workload_benchmarks.csv",
+      "D:\\Desktop\\Hackathon\\Mini Project\\backend\\benchmarks\\results\\component_benchmarks.json",
+      "D:\\Desktop\\Hackathon\\Mini Project\\backend\\benchmarks\\results\\baseline_comparisons.json",
+      "D:\\Desktop\\Hackathon\\Mini Project\\backend\\benchmarks\\results\\failure_experiment.json"
+    ]
+  }
+}
