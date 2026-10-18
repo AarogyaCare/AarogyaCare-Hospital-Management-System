@@ -136,11 +136,23 @@ public class SystemDesignComponentsTests {
     }
 
     @Test
-    @DisplayName("Component F: Web Crawler - SSRF protection blocks cloud metadata and private subnets")
+    @DisplayName("Component F: Web Crawler - SSRF protection blocks cloud metadata, localhost, and private subnets")
     void testCrawlerSsrfProtection() {
         // AWS/Cloud metadata IP must be blocked
         assertThrows(Exceptions.BadRequestException.class, () ->
             crawlerService.validateUrlAndSsrfProtection("http://169.254.169.254/latest/meta-data/"));
+
+        // Localhost and loopback must be strictly blocked
+        assertThrows(Exceptions.BadRequestException.class, () ->
+            crawlerService.validateUrlAndSsrfProtection("http://localhost:8000/api/v1/system-design/telemetry"));
+        assertThrows(Exceptions.BadRequestException.class, () ->
+            crawlerService.validateUrlAndSsrfProtection("http://127.0.0.1:27017/"));
+
+        // Private RFC 1918 subnets must be blocked
+        assertThrows(Exceptions.BadRequestException.class, () ->
+            crawlerService.validateUrlAndSsrfProtection("http://192.168.1.1/admin"));
+        assertThrows(Exceptions.BadRequestException.class, () ->
+            crawlerService.validateUrlAndSsrfProtection("http://10.0.0.1/status"));
 
         // Unapproved arbitrary external domain must be blocked
         assertThrows(Exceptions.BadRequestException.class, () ->

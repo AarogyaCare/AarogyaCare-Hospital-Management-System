@@ -47,9 +47,7 @@ public class SafeWebCrawlerService {
             "who.int",
             "cdc.gov",
             "mohfw.gov.in",
-            "aarogyacare.org",
-            "localhost",
-            "127.0.0.1"
+            "aarogyacare.org"
     ));
 
     private final HttpClient httpClient;
@@ -224,9 +222,12 @@ public class SafeWebCrawlerService {
             throw new Exceptions.BadRequestException("Invalid host in URL.");
         }
 
-        // Direct cloud metadata check
-        if ("169.254.169.254".equals(host) || "metadata.google.internal".equalsIgnoreCase(host)) {
+        // Direct localhost and cloud metadata check
+        if ("169.254.169.254".equals(host) || "metadata.google.internal".equalsIgnoreCase(host) || "100.100.100.200".equals(host)) {
             throw new Exceptions.BadRequestException("SSRF Protection: Direct access to cloud metadata service is strictly prohibited.");
+        }
+        if ("localhost".equalsIgnoreCase(host) || "127.0.0.1".equals(host) || "0.0.0.0".equals(host) || "::1".equals(host) || "[::1]".equals(host)) {
+            throw new Exceptions.BadRequestException("SSRF Protection: Access to localhost or loopback addresses is strictly prohibited.");
         }
 
         // Domain allowlist check
@@ -242,38 +243,59 @@ public class SafeWebCrawlerService {
             throw new Exceptions.BadRequestException("SSRF Protection: Host '" + host + "' is not in the approved healthcare domain allowlist.");
         }
 
-        // IP-level SSRF resolution check (excluding local loopback if allowed in test config)
+        // IP-level SSRF resolution check: strictly block loopback, private subnets, link-local, carrier-grade NAT, multicast
         try {
             InetAddress address = InetAddress.getByName(host);
-            byte[] bytes = address.getAddress();
-
-            // Link-local 169.254.0.0/16
-            if ((bytes[0] & 0xFF) == 169 && (bytes[1] & 0xFF) == 254) {
-                throw new Exceptions.BadRequestException("SSRF Protection: Host resolves to link-local address (169.254.x.x).");
+            if (address.isLoopbackAddress() || address.isAnyLocalAddress()) {
+                throw new Exceptions.BadRequestException("SSRF Protection: Host resolves to loopback/local address.");
             }
-            // Multicast 224.0.0.0/4
-            if ((bytes[0] & 0xF0) == 224) {
+            if (address.isSiteLocalAddress()) {
+                throw new Exceptions.BadRequestException("SSRF Protection: Host resolves to private RFC 1918 address.");
+            }
+            if (address.isLinkLocalAddress()) {
+                throw new Exceptions.BadRequestException("SSRF Protection: Host resolves to link-local address.");
+            }
+            if (address.isMulticastAddress()) {
                 throw new Exceptions.BadRequestException("SSRF Protection: Host resolves to multicast address.");
             }
 
-            // Private subnet checks unless host is explicitly localhost in testing
-            boolean isLocalTest = host.equalsIgnoreCase("localhost") || host.equalsIgnoreCase("127.0.0.1");
-            if (!isLocalTest) {
-                // 10.0.0.0/8
-                if ((bytes[0] & 0xFF) == 10) {
-                    throw new Exceptions.BadRequestException("SSRF Protection: Host resolves to private RFC 1918 address (10.x.x.x).");
+            byte[] bytes = address.getAddress();
+            if (bytes.length == 4) {
+                int b0 = bytes[0] & 0xFF;
+                int b1 = bytes[1] & 0xFF;
+
+                // 127.0.0.0/8 (Loopback)
+                if (b0 == 127) {
+                    throw new Exceptions.BadRequestException("SSRF Protection: Host resolves to loopback subnet (127.x.x.x).");
                 }
-                // 172.16.0.0/12
-                if ((bytes[0] & 0xFF) == 172 && (bytes[1] & 0xF0) == 16) {
-                    throw new Exceptions.BadRequestException("SSRF Protection: Host resolves to private RFC 1918 address (172.16.x.x).");
+                // 10.0.0.0/8 (RFC 1918)
+                if (b0 == 10) {
+                    throw new Exceptions.BadRequestException("SSRF Protection: Host resolves to private subnet (10.x.x.x).");
                 }
-                // 192.168.0.0/16
-                if ((bytes[0] & 0xFF) == 192 && (bytes[1] & 0xFF) == 168) {
-                    throw new Exceptions.BadRequestException("SSRF Protection: Host resolves to private RFC 1918 address (192.168.x.x).");
+                // 172.16.0.0/12 (RFC 1918)
+                if (b0 == 172 && (b1 >= 16 && b1 <= 31)) {
+                    throw new Exceptions.BadRequestException("SSRF Protection: Host resolves to private subnet (172.16-31.x.x).");
                 }
-                // Loopback 127.0.0.0/8
-                if ((bytes[0] & 0xFF) == 127) {
-                    throw new Exceptions.BadRequestException("SSRF Protection: Host resolves to loopback address (127.x.x.x).");
+                // 192.168.0.0/16 (RFC 1918)
+                if (b0 == 192 && b1 == 168) {
+                    throw new Exceptions.BadRequestException("SSRF Protection: Host resolves to private subnet (192.168.x.x).");
+                }
+                // 169.254.0.0/16 (Link-local)
+                if (b0 == 169 && b1 == 254) {
+                    throw new Exceptions.BadRequestException("SSRF Protection: Host resolves to link-local address (169.254.x.x).");
+                }
+                // 100.64.0.0/10 (Carrier-Grade NAT)
+                if (b0 == 100 && (b1 >= 64 && b1 <= 127)) {
+                    throw new Exceptions.BadRequestException("SSRF Protection: Host resolves to Shared Address Space (100.64.0.0/10).");
+                }
+                // 0.0.0.0/8
+                if (b0 == 0) {
+                    throw new Exceptions.BadRequestException("SSRF Protection: Host resolves to non-routable address (0.x.x.x).");
+                }
+            } else if (bytes.length == 16) {
+                // IPv6 Unique Local Address (fc00::/7)
+                if ((bytes[0] & 0xFE) == 0xFC) {
+                    throw new Exceptions.BadRequestException("SSRF Protection: Host resolves to IPv6 unique local address.");
                 }
             }
         } catch (UnknownHostException e) {

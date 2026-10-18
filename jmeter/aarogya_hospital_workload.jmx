@@ -2,7 +2,7 @@
 <jmeterTestPlan version="1.2" properties="5.0" jmeter="5.6.3">
   <hashTree>
     <TestPlan guiclass="TestPlanGui" testclass="TestPlan" testname="Aarogya Care Hospital Load Test Plan" enabled="true">
-      <stringProp name="TestPlan.comments">Scalable Hospital Management System - Spring Boot + MongoDB + Redis Load Benchmark</stringProp>
+      <stringProp name="TestPlan.comments">Scalable Hospital Management System - Spring Boot + MongoDB + Redis Multi-Tier Benchmark</stringProp>
       <boolProp name="TestPlan.functional_mode">false</boolProp>
       <boolProp name="TestPlan.tearDown_on_shutdown">true</boolProp>
       <boolProp name="TestPlan.serialize_threadgroups">false</boolProp>
@@ -22,7 +22,47 @@
       </elementProp>
     </TestPlan>
     <hashTree>
-      <!-- Workload Level 1: Low (10 Concurrent Users) -->
+      <!-- Global HTTP Header Manager -->
+      <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="Global HTTP Header Manager" enabled="true">
+        <collectionProp name="HeaderManager.headers">
+          <elementProp name="" elementType="Header">
+            <stringProp name="Header.name">Content-Type</stringProp>
+            <stringProp name="Header.value">application/json</stringProp>
+          </elementProp>
+          <elementProp name="" elementType="Header">
+            <stringProp name="Header.name">Accept</stringProp>
+            <stringProp name="Header.value">application/json</stringProp>
+          </elementProp>
+          <elementProp name="" elementType="Header">
+            <stringProp name="Header.name">User-Agent</stringProp>
+            <stringProp name="Header.value">AarogyaCare-JMeter-LoadHarness/5.6</stringProp>
+          </elementProp>
+        </collectionProp>
+      </HeaderManager>
+      <hashTree/>
+
+      <!-- Global HTTP 200 OK Response Assertion -->
+      <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="Global Assert HTTP 200 OK" enabled="true">
+        <collectionProp name="Asserion.test_strings">
+          <stringProp name="49586">200</stringProp>
+        </collectionProp>
+        <stringProp name="Assertion.custom_message">HTTP Request failed: Response code is not 200 OK</stringProp>
+        <stringProp name="Assertion.test_field">Assertion.response_code</stringProp>
+        <boolProp name="Assertion.assume_success">false</boolProp>
+        <intProp name="Assertion.test_type">8</intProp>
+      </ResponseAssertion>
+      <hashTree/>
+
+      <!-- Global Realistic Client Think-Time (Gaussian distribution: 100ms +/- 50ms) -->
+      <GaussianRandomTimer guiclass="GaussianRandomTimerGui" testclass="GaussianRandomTimer" testname="Realistic Client Think-Time" enabled="true">
+        <stringProp name="ConstantTimer.delay">100</stringProp>
+        <stringProp name="RandomTimer.range">50.0</stringProp>
+      </GaussianRandomTimer>
+      <hashTree/>
+
+      <!-- ================================================================= -->
+      <!-- Workload Level 1: Low Concurrency (10 Concurrent Threads)         -->
+      <!-- ================================================================= -->
       <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="Workload-Low-10Users" enabled="true">
         <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
         <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController" testname="Loop Controller" enabled="true">
@@ -34,23 +74,8 @@
         <boolProp name="ThreadGroup.scheduler">false</boolProp>
       </ThreadGroup>
       <hashTree>
-        <!-- Header Manager for JSON -->
-        <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="HTTP Header Manager" enabled="true">
-          <collectionProp name="HeaderManager.headers">
-            <elementProp name="" elementType="Header">
-              <stringProp name="Header.name">Content-Type</stringProp>
-              <stringProp name="Header.value">application/json</stringProp>
-            </elementProp>
-            <elementProp name="" elementType="Header">
-              <stringProp name="Header.name">Accept</stringProp>
-              <stringProp name="Header.value">application/json</stringProp>
-            </elementProp>
-          </collectionProp>
-        </HeaderManager>
-        <hashTree/>
-
         <!-- Sampler 1: Health Readiness Probe -->
-        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="GET /health/ready" enabled="true">
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="L1: GET /health/ready" enabled="true">
           <stringProp name="HTTPSampler.domain">${HOST}</stringProp>
           <stringProp name="HTTPSampler.port">${PORT}</stringProp>
           <stringProp name="HTTPSampler.protocol">http</stringProp>
@@ -59,8 +84,8 @@
         </HTTPSamplerProxy>
         <hashTree/>
 
-        <!-- Sampler 2: Departments Catalogue (Redis Cached) -->
-        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="GET /api/v1/departments" enabled="true">
+        <!-- Sampler 2: Departments Catalogue (Redis Cache-Aside) -->
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="L1: GET /api/v1/departments" enabled="true">
           <stringProp name="HTTPSampler.domain">${HOST}</stringProp>
           <stringProp name="HTTPSampler.port">${PORT}</stringProp>
           <stringProp name="HTTPSampler.protocol">http</stringProp>
@@ -70,7 +95,7 @@
         <hashTree/>
 
         <!-- Sampler 3: Doctor Discovery Search -->
-        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="GET /api/v1/doctors" enabled="true">
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="L1: GET /api/v1/doctors?limit=10" enabled="true">
           <stringProp name="HTTPSampler.domain">${HOST}</stringProp>
           <stringProp name="HTTPSampler.port">${PORT}</stringProp>
           <stringProp name="HTTPSampler.protocol">http</stringProp>
@@ -80,7 +105,7 @@
         <hashTree/>
 
         <!-- Sampler 4: Autocomplete Prefix Trie Search -->
-        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="GET /api/v1/autocomplete" enabled="true">
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="L1: GET /api/v1/autocomplete?q=card&amp;limit=5" enabled="true">
           <stringProp name="HTTPSampler.domain">${HOST}</stringProp>
           <stringProp name="HTTPSampler.port">${PORT}</stringProp>
           <stringProp name="HTTPSampler.protocol">http</stringProp>
@@ -89,8 +114,8 @@
         </HTTPSamplerProxy>
         <hashTree/>
 
-        <!-- Sampler 5: System Telemetry -->
-        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="GET /api/v1/system-design/telemetry" enabled="true">
+        <!-- Sampler 5: System Telemetry Metrics -->
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="L1: GET /api/v1/system-design/telemetry" enabled="true">
           <stringProp name="HTTPSampler.domain">${HOST}</stringProp>
           <stringProp name="HTTPSampler.port">${PORT}</stringProp>
           <stringProp name="HTTPSampler.protocol">http</stringProp>
@@ -100,7 +125,9 @@
         <hashTree/>
       </hashTree>
 
-      <!-- Workload Level 2: Medium (50 Concurrent Users) -->
+      <!-- ================================================================= -->
+      <!-- Workload Level 2: Medium Concurrency (50 Concurrent Threads)       -->
+      <!-- ================================================================= -->
       <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="Workload-Medium-50Users" enabled="true">
         <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
         <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController" testname="Loop Controller" enabled="true">
@@ -112,8 +139,8 @@
         <boolProp name="ThreadGroup.scheduler">false</boolProp>
       </ThreadGroup>
       <hashTree>
-        <!-- Reusable samplers -->
-        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="GET /api/v1/doctors?department_id=dept-cardio" enabled="true">
+        <!-- Sampler 1: Doctor Filtered By Department -->
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="L2: GET /api/v1/doctors?department_id=dept-cardio" enabled="true">
           <stringProp name="HTTPSampler.domain">${HOST}</stringProp>
           <stringProp name="HTTPSampler.port">${PORT}</stringProp>
           <stringProp name="HTTPSampler.protocol">http</stringProp>
@@ -121,7 +148,9 @@
           <stringProp name="HTTPSampler.method">GET</stringProp>
         </HTTPSamplerProxy>
         <hashTree/>
-        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="GET /api/v1/medicines?limit=10" enabled="true">
+
+        <!-- Sampler 2: Medicines Inventory Catalogue -->
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="L2: GET /api/v1/medicines?limit=10" enabled="true">
           <stringProp name="HTTPSampler.domain">${HOST}</stringProp>
           <stringProp name="HTTPSampler.port">${PORT}</stringProp>
           <stringProp name="HTTPSampler.protocol">http</stringProp>
@@ -129,9 +158,21 @@
           <stringProp name="HTTPSampler.method">GET</stringProp>
         </HTTPSamplerProxy>
         <hashTree/>
+
+        <!-- Sampler 3: Autocomplete Multi-term Query -->
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="L2: GET /api/v1/autocomplete?q=ortho" enabled="true">
+          <stringProp name="HTTPSampler.domain">${HOST}</stringProp>
+          <stringProp name="HTTPSampler.port">${PORT}</stringProp>
+          <stringProp name="HTTPSampler.protocol">http</stringProp>
+          <stringProp name="HTTPSampler.path">/api/v1/autocomplete?q=ortho&amp;limit=5</stringProp>
+          <stringProp name="HTTPSampler.method">GET</stringProp>
+        </HTTPSamplerProxy>
+        <hashTree/>
       </hashTree>
 
-      <!-- Workload Level 3: High (100 Concurrent Users) -->
+      <!-- ================================================================= -->
+      <!-- Workload Level 3: High Concurrency (100 Concurrent Threads)       -->
+      <!-- ================================================================= -->
       <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="Workload-High-100Users" enabled="true">
         <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
         <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController" testname="Loop Controller" enabled="true">
@@ -143,7 +184,8 @@
         <boolProp name="ThreadGroup.scheduler">false</boolProp>
       </ThreadGroup>
       <hashTree>
-        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="GET /api/v1/autocomplete?q=neuro" enabled="true">
+        <!-- Sampler 1: High Stress Autocomplete Prefix Trie Search -->
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="L3: GET /api/v1/autocomplete?q=neuro" enabled="true">
           <stringProp name="HTTPSampler.domain">${HOST}</stringProp>
           <stringProp name="HTTPSampler.port">${PORT}</stringProp>
           <stringProp name="HTTPSampler.protocol">http</stringProp>
@@ -151,7 +193,68 @@
           <stringProp name="HTTPSampler.method">GET</stringProp>
         </HTTPSamplerProxy>
         <hashTree/>
+
+        <!-- Sampler 2: High Stress Departments Cache Read -->
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="L3: GET /api/v1/departments" enabled="true">
+          <stringProp name="HTTPSampler.domain">${HOST}</stringProp>
+          <stringProp name="HTTPSampler.port">${PORT}</stringProp>
+          <stringProp name="HTTPSampler.protocol">http</stringProp>
+          <stringProp name="HTTPSampler.path">/api/v1/departments</stringProp>
+          <stringProp name="HTTPSampler.method">GET</stringProp>
+        </HTTPSamplerProxy>
+        <hashTree/>
+
+        <!-- Sampler 3: High Stress Doctor Slot Lookup -->
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="L3: GET /api/v1/doctors/doc-1/slots" enabled="true">
+          <stringProp name="HTTPSampler.domain">${HOST}</stringProp>
+          <stringProp name="HTTPSampler.port">${PORT}</stringProp>
+          <stringProp name="HTTPSampler.protocol">http</stringProp>
+          <stringProp name="HTTPSampler.path">/api/v1/doctors/doc-1/slots</stringProp>
+          <stringProp name="HTTPSampler.method">GET</stringProp>
+        </HTTPSamplerProxy>
+        <hashTree/>
       </hashTree>
+
+      <!-- ================================================================= -->
+      <!-- JMeter Result Collection & Structured Output Metrics Config       -->
+      <!-- ================================================================= -->
+      <ResultCollector guiclass="SummaryReport" testclass="ResultCollector" testname="Summary Report" enabled="true">
+        <boolProp name="ResultCollector.error_logging">false</boolProp>
+        <objProp>
+          <name>saveConfig</name>
+          <value class="SampleSaveConfiguration">
+            <time>true</time>
+            <latency>true</latency>
+            <timestamp>true</timestamp>
+            <success>true</success>
+            <label>true</label>
+            <code>true</code>
+            <message>true</message>
+            <threadName>true</threadName>
+            <dataType>true</dataType>
+            <encoding>false</encoding>
+            <assertions>true</assertions>
+            <subresults>true</subresults>
+            <responseData>false</responseData>
+            <samplerData>false</samplerData>
+            <xml>false</xml>
+            <fieldNames>true</fieldNames>
+            <responseHeaders>false</responseHeaders>
+            <requestHeaders>false</requestHeaders>
+            <responseDataOnError>false</responseDataOnError>
+            <saveAssertionResultsFailureMessage>true</saveAssertionResultsFailureMessage>
+            <assertionsResultsToSave>0</assertionsResultsToSave>
+            <bytes>true</bytes>
+            <sentBytes>true</sentBytes>
+            <url>true</url>
+            <threadCounts>true</threadCounts>
+            <idleTime>true</idleTime>
+            <connectTime>true</connectTime>
+          </value>
+        </objProp>
+        <stringProp name="filename">jmeter/benchmark_results.jtl</stringProp>
+      </ResultCollector>
+      <hashTree/>
     </hashTree>
   </hashTree>
 </jmeterTestPlan>

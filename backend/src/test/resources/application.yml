@@ -1,0 +1,37 @@
+server:
+  port: 8000
+
+spring:
+  application:
+    name: aarogya-care-backend-test
+
+  data:
+    mongodb:
+      uri: ${MONGODB_URI:mongodb://localhost:27017/aarogya}
+      auto-index-creation: true
+
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 2000ms
+
+aarogya:
+  security:
+    jwt-secret: "test-secret-key-for-ucs3513-system-design-junit-tests-min-256-bits!"
+    jwt-expiration-ms: 86400000
+  crawler:
+    allowed-domains:
+      - who.int
+      - cdc.gov
+      - mohfw.gov.in
+      - aarogyacare.org
+    max-depth: 2
+    max-pages: 20
+    timeout-ms: 3000
+  rate-limiter:
+    default-capacity: 100
+    default-refill-rate: 10
+    auth-capacity: 20
+    auth-refill-rate: 2
+    emergency-capacity: 500
+    emergency-refill-rate: 50

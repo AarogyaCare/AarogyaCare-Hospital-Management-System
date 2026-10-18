@@ -18,10 +18,16 @@ public class JwtTokenProvider {
     private final long jwtExpirationMs;
 
     public JwtTokenProvider(
-        @Value("${aarogya.security.jwt-secret:aarogya-super-secret-key-for-ucs3513-system-design-2026-minimum-256-bits-long!}") String jwtSecret,
+        @Value("${aarogya.security.jwt-secret:}") String jwtSecret,
         @Value("${aarogya.security.jwt-expiration-ms:86400000}") long jwtExpirationMs
     ) {
-        this.key = Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
+        if (jwtSecret == null || jwtSecret.trim().length() < 32) {
+            throw new IllegalStateException(
+                "JWT Secret is required and must be at least 32 characters (256 bits) long. " +
+                "Please configure AAROGYA_SECURITY_JWT_SECRET or JWT_SECRET in your environment."
+            );
+        }
+        this.key = Keys.hmacShaKeyFor(jwtSecret.trim().getBytes(StandardCharsets.UTF_8));
         this.jwtExpirationMs = jwtExpirationMs;
     }
 

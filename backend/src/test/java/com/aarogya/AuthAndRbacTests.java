@@ -60,6 +60,15 @@ public class AuthAndRbacTests {
     }
 
     @Test
+    @DisplayName("Verify JwtTokenProvider enforces minimum 256-bit (32 character) secret length")
+    void testJwtSecretValidation() {
+        assertThrows(IllegalStateException.class, () -> new JwtTokenProvider(null, 86400000L));
+        assertThrows(IllegalStateException.class, () -> new JwtTokenProvider("", 86400000L));
+        assertThrows(IllegalStateException.class, () -> new JwtTokenProvider("short-secret-key", 86400000L));
+        assertDoesNotThrow(() -> new JwtTokenProvider("valid-secret-key-at-least-32-characters-long!", 86400000L));
+    }
+
+    @Test
     @DisplayName("Verify patient registration auto-provisions UHID profile and prevents duplicate emails")
     void testPatientRegistrationAndDuplicateEmailPrevention() {
         String uniqueEmail = "new.patient." + System.currentTimeMillis() + "@aarogyacare.org";

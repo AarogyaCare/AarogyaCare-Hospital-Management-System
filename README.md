@@ -5,7 +5,7 @@
 [![Frontend](https://img.shields.io/badge/Frontend-React_19_+_TypeScript-61DAFB.svg?logo=react&logoColor=black)](https://react.dev)
 [![Database](https://img.shields.io/badge/Database-MongoDB_7.0-47A248.svg?logo=mongodb&logoColor=white)](https://www.mongodb.com)
 [![Caching](https://img.shields.io/badge/Caching-Redis_5.0%2F7.0-DC382D.svg?logo=redis&logoColor=white)](https://redis.io)
-[![Tests](https://img.shields.io/badge/Tests-17_Passed_(100%25)-4caf50.svg)](#-automated-testing--verification)
+[![Tests](https://img.shields.io/badge/Tests-22_Passed_(100%25)-4caf50.svg)](#-automated-testing--verification)
 [![License](https://img.shields.io/badge/License-Academic_Evaluation-blue.svg)](#-academic-scope--integrity)
 
 > **UCS3513 System Design Laboratory Mini-Project**  
@@ -115,15 +115,17 @@
 The project implements all seven system design components required by the UCS3513 laboratory syllabus:
 
 ### 1. Unique ID Generator (Snowflake Algorithm)
+- **Architectural Classification:** **Distributed-Ready Process Algorithm** (Autonomous Worker Node Architecture)
 - **Implementation:** [`UniqueIdGeneratorService.java`](backend/src/main/java/com/aarogya/systemdesign/id/UniqueIdGeneratorService.java)
 - **Algorithm:** 64-bit time-ordered Snowflake identifiers composed of:
   - 1 unused sign bit
   - 41 bits timestamp in milliseconds (~69 years lifespan)
   - 10 bits machine / node identifier (up to 1,024 nodes)
   - 12 bits sequence counter (up to 4,096 IDs per millisecond per node)
-- **Throughput:** Over 2.7 million IDs/second with zero collision rate across multi-threaded evaluations.
+- **Throughput:** Over 2.7 million IDs/second with zero collision rate across multi-threaded evaluations without centralized database lock contention.
 
 ### 2. Token Bucket Rate Limiter
+- **Architectural Classification:** **Instance-Local In-Memory Filter** (Process-isolated token bucket with atomic thread safety)
 - **Implementation:** [`RateLimiterService.java`](backend/src/main/java/com/aarogya/systemdesign/ratelimiter/RateLimiterService.java)
 - **Algorithm:** Atomic refill token bucket with tiered quotas:
   - General API: 100 capacity, 10 tokens/sec refill
@@ -132,29 +134,34 @@ The project implements all seven system design components required by the UCS351
 - **Behavior:** Returns HTTP `429 Too Many Requests` with `Retry-After` header when quota is exhausted.
 
 ### 3. Key-Value Store (Redis Cache-Aside)
+- **Architectural Classification:** **Real Distributed Cache** (Networked Redis 5.0/7.0 with Cache-Aside pattern & In-Memory fallback)
 - **Implementation:** [`CacheService.java`](backend/src/main/java/com/aarogya/systemdesign/cache/CacheService.java)
 - **Pattern:** Cache-Aside with commit-then-invalidate write hygiene:
-  - Cache Read: Checks Redis key; on miss, loads from MongoDB, sets Redis with TTL (default 10 minutes), and returns.
+  - Cache Read: Checks networked Redis key; on miss, loads from MongoDB, sets Redis with TTL (default 10 minutes), and returns.
   - Cache Write/Update: Mutates MongoDB authoritative state first, then immediately invalidates cache keys to avoid stale reads.
-  - In-Memory Fallback: Automatically falls back to local memory cache if Redis is temporarily unreachable.
+  - In-Memory Fallback: Automatically falls back to local memory cache if Redis network connection is temporarily unreachable.
 
 ### 4. Consistent Hashing Ring
+- **Architectural Classification:** **Logical Partitioning & Cluster Router** (Client-side routing simulation across virtual ring)
 - **Implementation:** [`ConsistentHashRing.java`](backend/src/main/java/com/aarogya/systemdesign/hashring/ConsistentHashRing.java)
-- **Algorithm:** SHA-256 hash ring with configurable virtual nodes (150 virtual nodes per physical node).
+- **Algorithm:** SHA-256 hash ring with configurable virtual nodes (150 virtual nodes per physical partition).
 - **Remapping Behavior:** When a node leaves a 3-node ring, only ~31.8% to 32.1% of keys are remapped (closely matching the theoretical optimal $1/N = 33.33\%$).
 
 ### 5. URL Shortener (Outpatient Pass Service)
+- **Architectural Classification:** **Real Distributed Service with Persistent Storage** (MongoDB-backed Base62 tokenization)
 - **Implementation:** [`ShortLinkService.java`](backend/src/main/java/com/aarogya/systemdesign/shortlink/ShortLinkService.java)
 - **Algorithm:** Base62 encoding (`[0-9a-zA-Z]`) generating 6-character compact tokens for patient outpatient passes.
 - **Security:** Open-redirect defense actively rejects malicious protocol schemes (`javascript:`, `data:`, `file:`) with HTTP 400.
 - **Metrics:** Atomic click counters and last-accessed timestamps persisted in MongoDB.
 
 ### 6. Safe Web Crawler (Medical Guidelines Ingestion)
+- **Architectural Classification:** **In-Process Network Worker with SSRF Defense Shield** (Polite background ingestor)
 - **Implementation:** [`SafeWebCrawlerService.java`](backend/src/main/java/com/aarogya/systemdesign/crawler/SafeWebCrawlerService.java)
-- **SSRF Defense:** Comprehensive IP validation shield blocks loopback (`127.0.0.0/8`), link-local (`169.254.0.0/16`), private networks (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`), and metadata service endpoints.
-- **Ingestion:** Allowed domains list (`who.int`, `cdc.gov`, `mohfw.gov.in`), depth limiting (max depth 2), page limiting, and SHA-256 content deduplication.
+- **SSRF Defense:** Comprehensive IP validation shield blocks loopback (`127.0.0.0/8`, `::1`), link-local (`169.254.0.0/16`), private networks (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`), Carrier-Grade NAT (`100.64.0.0/10`), IPv6 ULA (`fc00::/7`), and cloud metadata endpoints (`169.254.169.254`, `metadata.google.internal`).
+- **Ingestion:** Allowed domains whitelist (`who.int`, `cdc.gov`, `mohfw.gov.in`), depth limiting (max depth 2), page limiting, and SHA-256 content deduplication.
 
 ### 7. Dynamic Prefix Trie Autocomplete
+- **Architectural Classification:** **Hybrid In-Memory Index with Distributed Redis Caching** (Prefix Trie + Shared cache)
 - **Implementation:** [`AutocompleteTrieService.java`](backend/src/main/java/com/aarogya/systemdesign/autocomplete/AutocompleteTrieService.java)
 - **Data Structure:** Multi-way Prefix Trie indexing doctors, departments, and medicine inventory.
 - **Features:** Subphrase tokenization, frequency scoring, and Redis caching for hot prefixes with sub-millisecond lookups.
@@ -270,7 +277,7 @@ Open `http://localhost:5173` in your browser.
 The test suite validates data consistency invariants, concurrency safety, security filters, and all system design components:
 
 ```bash
-# Execute Spring Boot JUnit 5 test suite (17/17 tests passing)
+# Execute Spring Boot JUnit 5 test suite (22/22 tests passing)
 cd backend
 mvn test
 
@@ -283,12 +290,12 @@ npm run build
 
 | Test Suite | Tests | Invariants & Workflows Verified |
 | :--- | :---: | :--- |
-| **`AuthAndRbacTests`** | 3 | JWT generation for all 7 roles, authorization boundaries, rejection of bad passwords (HTTP 401). |
-| **`AppointmentConcurrencyTests`** | 2 | Race condition safety: 10 parallel threads attempting to reserve the exact same slot. Exactly 1 succeeds (HTTP 201); 9 are rejected with HTTP 409 Conflict. |
-| **`PharmacyInventoryConcurrencyTests`** | 2 | High-concurrency stock depletion: atomic conditional decrements (`$gte: qty`) ensure inventory never goes negative. Duplicate dispensing blocked via idempotency. |
-| **`BillingAndIdempotencyTests`** | 2 | Invoice status transitions (`PENDING` -> `PAID`). Payment replay with identical idempotency key returns original receipt without duplicate debit. |
+| **`AuthAndRbacTests`** | 6 | JWT generation and role claim extraction across all 7 roles, token expiration checks, strict JWT secret entropy validation (>= 32 chars), valid credential authentication, and rejection of bad passwords (HTTP 401). |
+| **`AppointmentConcurrencyTests`** | 2 | Race condition safety: 10 parallel threads attempting to reserve the exact same slot. Exactly 1 succeeds (HTTP 201); 9 are rejected with HTTP 409 Conflict. Appointment cancellation and atomic slot re-opening flow. |
+| **`PharmacyInventoryConcurrencyTests`** | 2 | High-concurrency stock depletion: 15 concurrent threads dispensing medicine; atomic conditional decrements (`$gte: qty`) ensure inventory never goes negative. Duplicate dispensing blocked via idempotency keys. |
+| **`BillingAndIdempotencyTests`** | 4 | Invoice creation and status transitions (`PENDING` -> `PAID`). Payment replay with identical idempotency key returns original receipt without duplicate debit. Replay with conflicting key throws HTTP 409 Conflict. Payment attempts against already paid invoices throw HTTP 400 Bad Request. |
 | **`EmergencyWorkflowTests`** | 1 | Emergency request registration, priority queue sorting (`ESI-1 STAT` top priority), authorized nurse/doctor status updates. |
-| **`SystemDesignComponentsTests`** | 7 | Unit verification for all 7 components: Snowflake monotonic IDs (0 collisions), Token Bucket limiter, Redis KV cache, Consistent Hash Ring rebalance, Base62 URL shortener with SSRF/redirect guard, Web Crawler SSRF shield, and Prefix Trie autocomplete. |
+| **`SystemDesignComponentsTests`** | 7 | Unit verification for all 7 components: Snowflake monotonic IDs (0 collisions across multi-threaded generation), Token Bucket limiter (capacity & refill behavior), Redis KV cache-aside, Consistent Hash Ring rebalance (virtual nodes distribution), Base62 URL shortener with protocol injection defense, Safe Web Crawler multi-layer SSRF defense shield (loopback, RFC 1918, metadata endpoints), and Dynamic Prefix Trie autocomplete. |
 
 ---
 

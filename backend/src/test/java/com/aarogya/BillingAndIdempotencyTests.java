@@ -104,9 +104,11 @@ public class BillingAndIdempotencyTests {
         var inv = billingService.createInvoice(invReq, cashier);
 
         // 1st payment succeeds
+        String keyFirst = "key-first-" + UUID.randomUUID();
+        String keySecond = "key-second-" + UUID.randomUUID();
         var p1 = billingService.simulatePayment(
-            new BillingDtos.SimulatePaymentRequest(inv.id(), 400.0, "CARD", "key-first"),
-            "key-first",
+            new BillingDtos.SimulatePaymentRequest(inv.id(), 400.0, "CARD", keyFirst),
+            keyFirst,
             cashier
         );
         assertEquals("SUCCESS", p1.status(), "First payment must succeed.");
@@ -118,8 +120,8 @@ public class BillingAndIdempotencyTests {
         // 2nd payment with different idempotency key must be rejected with ConflictException
         assertThrows(com.aarogya.exception.Exceptions.ConflictException.class, () ->
             billingService.simulatePayment(
-                new BillingDtos.SimulatePaymentRequest(inv.id(), 400.0, "CARD", "key-second"),
-                "key-second",
+                new BillingDtos.SimulatePaymentRequest(inv.id(), 400.0, "CARD", keySecond),
+                keySecond,
                 cashier
             )
         );
