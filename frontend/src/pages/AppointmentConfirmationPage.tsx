@@ -20,91 +20,93 @@ export const AppointmentConfirmationPage: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col w-full min-h-screen bg-background">
-      {/* 1. Architecture Simulation Notification */}
-      <div className="w-full bg-primary text-on-primary px-gutter-mobile lg:px-margin py-2.5">
-        <div className="max-w-[1360px] mx-auto flex flex-wrap items-center justify-between gap-space-sm text-label-sm font-label-sm">
-          <div className="flex items-center gap-space-sm">
-            <span className="w-2 h-2 rounded-full bg-tertiary-fixed animate-pulse"></span>
-            <span className="font-title-sm text-title-sm text-tertiary-fixed">TRANSACTION COMMITTED</span>
-            <span className="text-on-primary-container">
-              | PostgreSQL slot row locked & updated • Notification outbox row created • Cache invalidated
+    <div className="flex flex-col w-full min-h-screen bg-[#FAFAF7] dark:bg-[#111814] text-[#1A2E1A] dark:text-[#E8EDE8] font-sans">
+      {/* 1. Reassuring Patient Banner */}
+      <div className="w-full bg-[#1A2E1A] text-[#FAFAF7] px-4 lg:px-8 py-2.5">
+        <div className="max-w-[1360px] mx-auto flex flex-wrap items-center justify-between gap-2 text-[12px] font-medium">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-[#52B788] animate-pulse"></span>
+            <span className="font-semibold text-white">APPOINTMENT SECURELY REGISTERED</span>
+            <span className="text-[#A8D5B5] hidden md:inline">
+              • SMS & Email confirmation sent to patient contact
             </span>
           </div>
-          <span className="text-on-primary-container font-mono text-[11px]">
-            LATENCY: 8ms • ISOLATION: READ COMMITTED
+          <span className="text-[#A8D5B5] text-[11px]">
+            Chennai Medical Campus
           </span>
         </div>
       </div>
 
       {/* 2. Main Confirmation Card */}
-      <div className="max-w-3xl mx-auto w-full px-gutter-mobile lg:px-margin py-space-xl">
-        <div className="bg-surface-container-lowest rounded-2xl p-6 sm:p-10 shadow-lg border border-surface-container-high flex flex-col items-center text-center">
+      <div className="max-w-3xl mx-auto w-full px-4 lg:px-8 py-10">
+        <div className="bg-[#FFFFFF] dark:bg-[#1A2420] rounded-3xl p-6 sm:p-10 shadow-md border border-[#E2DDD6] dark:border-[#2E3E34] flex flex-col items-center text-center">
           {/* Success Check Icon */}
-          <div className="w-16 h-16 rounded-full bg-secondary-fixed text-on-secondary-fixed flex items-center justify-center mb-4 shadow-sm animate-scaleUp">
-            <span className="material-symbols-outlined text-[36px] text-secondary">verified</span>
+          <div className="w-16 h-16 rounded-2xl bg-[#EAF5EE] dark:bg-[#1F2E28] text-[#2D6A4F] dark:text-[#74C69D] flex items-center justify-center mb-4 shadow-sm">
+            <span className="material-symbols-outlined text-[36px]">check_circle</span>
           </div>
 
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-surface-container text-secondary font-label-md text-label-md font-semibold mb-2">
-            <span>Slot Reservation Guaranteed</span>
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#EAF5EE] dark:bg-[#1F2E28] text-[#2D6A4F] dark:text-[#74C69D] text-[12px] font-semibold mb-2">
+            <span>Confirmed & Ready</span>
           </div>
 
-          <h1 className="page-heading text-primary tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-bold text-[#1A2E1A] dark:text-[#E8EDE8] tracking-tight">
             Appointment Confirmed!
           </h1>
-          <p className="body-text text-on-surface-variant max-w-md mt-1">
-            Your appointment has been registered with zero double-booking lock protection.
+          <p className="text-[14px] text-[#4A5F4E] dark:text-[#B8CCBC] max-w-md mt-1">
+            We look forward to seeing you. Your visit details have been securely saved to your health profile.
           </p>
 
           {/* Appointment Ticket Box */}
-          <div className="w-full bg-surface-container-low rounded-2xl p-6 my-6 border border-surface-container-high text-left">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-surface-container-high/80 gap-2">
+          <div className="w-full bg-[#F5F4EF] dark:bg-[#1F2E28] rounded-2xl p-6 my-6 border border-[#E2DDD6] dark:border-[#2E3E34] text-left">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-[#E2DDD6] dark:border-[#2E3E34] gap-2">
               <div>
-                <span className="text-[11px] text-outline uppercase font-semibold">Appointment Reference</span>
-                <div className="font-headline-sm text-headline-sm text-primary font-mono font-bold">
+                <span className="text-[11px] text-[#6B7F6E] dark:text-[#A8D5B5] uppercase font-semibold">Appointment Reference</span>
+                <div className="text-lg font-mono font-bold text-[#1A2E1A] dark:text-[#E8EDE8]">
                   {appointmentId || 'AC-APT-2026-10492'}
                 </div>
               </div>
               <div className="text-left sm:text-right">
-                <span className="text-[11px] text-outline uppercase font-semibold">UHID / Patient</span>
-                <div className="font-title-sm text-title-sm text-primary font-mono">
+                <span className="text-[11px] text-[#6B7F6E] dark:text-[#A8D5B5] uppercase font-semibold">Patient UHID</span>
+                <div className="text-[13px] font-mono font-semibold text-[#1A2E1A] dark:text-[#E8EDE8]">
                   {uhid} • S. Rajendran
                 </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-4 border-b border-surface-container-high/80 text-body-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-4 border-b border-[#E2DDD6] dark:border-[#2E3E34] text-[13px]">
               <div>
-                <span className="text-on-surface-variant block text-[12px]">Consulting Specialist</span>
-                <span className="font-bold text-primary text-title-sm block">{doctorName}</span>
-                <span className="text-[12px] text-secondary font-medium">Cardiology • Chief of Cath Lab</span>
+                <span className="text-[#6B7F6E] dark:text-[#B8CCBC] block text-[11px]">Consulting Specialist</span>
+                <span className="font-bold text-[#1A2E1A] dark:text-[#E8EDE8] text-[15px] block">{doctorName}</span>
+                <span className="text-[12px] text-[#2D6A4F] dark:text-[#74C69D] font-medium">Cardiology Clinic</span>
               </div>
               <div>
-                <span className="text-on-surface-variant block text-[12px]">Date & Time</span>
-                <span className="font-bold text-primary text-title-sm block">Today (Oct 24), {slotTime}</span>
-                <span className="text-[12px] text-on-surface-variant">
-                  {mode === 'IN_PERSON' ? 'Room OPD-104, East Wing, Level 1' : 'Secure HD Tele-Consult'}
+                <span className="text-[#6B7F6E] dark:text-[#B8CCBC] block text-[11px]">Date & Time</span>
+                <span className="font-bold text-[#1A2E1A] dark:text-[#E8EDE8] text-[15px] block">Today, {slotTime}</span>
+                <span className="text-[12px] text-[#6B7F6E] dark:text-[#B8CCBC]">
+                  {mode === 'IN_PERSON' ? 'Room OPD-104, East Wing, Level 1' : 'Video Call Link will be active 10 mins prior'}
                 </span>
               </div>
             </div>
 
-            {/* Short Link reference */}
+            {/* Reference Link */}
             <div className="pt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <span className="text-[11px] text-outline uppercase block font-semibold">
-                  Secure Short Reference Link (Authorized)
+                <span className="text-[11px] text-[#6B7F6E] dark:text-[#A8D5B5] uppercase block font-semibold">
+                  Secure Digital Check-in Link
                 </span>
-                <span className="font-mono text-secondary text-body-sm font-semibold">
+                <span className="font-mono text-[#2D6A4F] dark:text-[#74C69D] text-[13px] font-semibold">
                   {window.location.origin}/s/{shortCode}
                 </span>
               </div>
               <button
                 type="button"
                 onClick={handleCopyLink}
-                className="px-3 py-1.5 rounded-lg bg-surface-container-highest text-primary font-title-sm text-title-sm hover:bg-secondary hover:text-white transition-colors flex items-center gap-1 self-start sm:self-auto"
+                className="self-start sm:self-auto px-3.5 py-1.5 rounded-xl bg-white dark:bg-[#16201B] border border-[#E2DDD6] dark:border-[#2E3E34] text-[12px] font-semibold text-[#2D6A4F] dark:text-[#74C69D] hover:bg-[#EAF5EE] transition-colors flex items-center gap-1.5"
               >
-                <span className="material-symbols-outlined text-[16px]">content_copy</span>
-                <span>{copied ? 'Copied!' : 'Copy Reference'}</span>
+                <span className="material-symbols-outlined text-[16px]">
+                  {copied ? 'check' : 'content_copy'}
+                </span>
+                <span>{copied ? 'Copied' : 'Copy Link'}</span>
               </button>
             </div>
           </div>
@@ -113,21 +115,13 @@ export const AppointmentConfirmationPage: React.FC = () => {
           <div className="flex flex-wrap items-center justify-center gap-3 w-full">
             <Link
               to="/patient-portal"
-              className="px-6 py-2.5 rounded-xl bg-primary text-white font-title-sm hover:bg-secondary transition-colors shadow-sm"
+              className="px-6 py-2.5 rounded-xl bg-[#2D6A4F] text-white font-semibold text-[13px] hover:bg-[#1B4332] shadow-sm transition-all"
             >
-              View in Patient Portal
+              Go to My Health Records
             </Link>
-            <button
-              type="button"
-              onClick={() => window.print()}
-              className="px-5 py-2.5 rounded-xl bg-surface-container text-primary font-title-sm hover:bg-surface-container-high transition-colors flex items-center gap-1.5"
-            >
-              <span className="material-symbols-outlined text-[18px]">print</span>
-              <span>Print Slip</span>
-            </button>
             <Link
               to="/"
-              className="px-5 py-2.5 rounded-xl bg-surface-container-low text-on-surface font-title-sm hover:bg-surface-container transition-colors"
+              className="px-5 py-2.5 rounded-xl bg-[#F5F4EF] dark:bg-[#1F2E28] text-[#1A2E1A] dark:text-[#E8EDE8] font-semibold text-[13px] hover:bg-[#EFECE6] transition-colors border border-[#E2DDD6] dark:border-[#2E3E34]"
             >
               Back to Home
             </Link>

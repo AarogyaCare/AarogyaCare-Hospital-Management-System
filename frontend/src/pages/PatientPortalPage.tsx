@@ -54,35 +54,35 @@ export const PatientPortalPage: React.FC = () => {
         }
         return inv;
       }));
-      setPaySuccess(`Simulated Sandbox Payment recorded! Status: PAID (Idempotency Key: ${idempotencyKey.slice(0, 16)}...).`);
-      setTimeout(() => setPaySuccess(null), 5000);
+      setPaySuccess('Payment successful! Your receipt has been updated.');
+      setTimeout(() => setPaySuccess(null), 4000);
     } catch (err: any) {
-      setPaySuccess(`Payment simulation notice: ${err.message || 'Updated locally'}`);
+      setPaySuccess(`Payment status: ${err.message || 'Updated'}`);
       setInvoices(prev => prev.map(inv => inv.id === invId ? { ...inv, status: 'PAID' } : inv));
       setTimeout(() => setPaySuccess(null), 4000);
     }
   };
 
   return (
-    <div className="flex flex-col w-full min-h-screen bg-background">
+    <div className="flex flex-col w-full min-h-screen bg-[#FAFAF7] dark:bg-[#111814] text-[#1A2E1A] dark:text-[#E8EDE8] font-sans">
       {/* Patient Header Banner */}
-      <section className="w-full bg-primary text-on-primary py-space-md border-b border-primary-container">
-        <div className="max-w-[1360px] mx-auto px-gutter-mobile lg:px-margin flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <section className="w-full bg-[#1A2E1A] text-[#FAFAF7] py-6 px-4 lg:px-8 border-b border-[#2D6A4F]">
+        <div className="max-w-[1360px] mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-secondary flex items-center justify-center text-white font-headline-sm font-bold shadow-md">
+            <div className="w-13 h-13 rounded-2xl bg-[#2D6A4F] flex items-center justify-center text-white text-lg font-bold shadow-sm">
               SR
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h1 className="font-headline-sm text-headline-sm text-white font-bold">
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-xl sm:text-2xl font-bold text-white">
                   S. Rajendran
                 </h1>
-                <span className="px-2.5 py-0.5 rounded-full bg-secondary-fixed text-on-secondary-fixed text-label-sm font-mono font-bold">
+                <span className="px-2.5 py-0.5 rounded-full bg-[#2D6A4F] text-[#D8F3DC] text-[11px] font-mono font-semibold">
                   UHID: AC-2024-9104
                 </span>
               </div>
-              <p className="font-body-sm text-body-sm text-primary-fixed mt-0.5">
-                61 Y • Male • Blood Group: B+ve • Primary Consultant: Dr. K. Ramanathan
+              <p className="text-[12px] text-[#A8D5B5] mt-0.5">
+                61 Y · Male · Blood Group: B+ve · Primary Doctor: Dr. K. Ramanathan
               </p>
             </div>
           </div>
@@ -90,36 +90,36 @@ export const PatientPortalPage: React.FC = () => {
           <div className="flex items-center gap-3">
             <Link
               to="/appointments/new"
-              className="px-4 py-2 rounded-xl bg-secondary text-white font-title-sm hover:bg-secondary-container hover:text-on-secondary-container transition-all shadow-sm"
+              className="px-4 py-2 rounded-xl bg-[#2D6A4F] text-white font-semibold text-[13px] hover:bg-[#1B4332] transition-all shadow-sm"
             >
-              Book New Appointment
+              Book New Visit
             </Link>
           </div>
         </div>
       </section>
 
       {/* Main Tabbed Layout */}
-      <div className="max-w-[1360px] mx-auto w-full px-gutter-mobile lg:px-margin py-space-lg flex-1">
+      <div className="max-w-[1360px] mx-auto w-full px-4 lg:px-8 py-6 flex-1">
         {/* Navigation Tabs Bar */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none border-b border-surface-container-high mb-space-lg">
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none border-b border-[#E2DDD6] dark:border-[#2E3E34] mb-6">
           {[
-            { id: 'OVERVIEW', label: 'Clinical Overview', icon: 'grid_view' },
-            { id: 'APPOINTMENTS', label: 'My Consultations', icon: 'calendar_month' },
-            { id: 'RECORDS', label: 'Lab & Health Records', icon: 'clinical_notes' },
-            { id: 'PRESCRIPTIONS', label: 'Prescriptions & Meds', icon: 'prescriptions' },
-            { id: 'BILLING', label: 'Invoices & Billing', icon: 'receipt_long' },
+            { id: 'OVERVIEW', label: 'My Health Overview', icon: 'grid_view' },
+            { id: 'APPOINTMENTS', label: 'My Appointments', icon: 'calendar_month' },
+            { id: 'RECORDS', label: 'Health Records', icon: 'clinical_notes' },
+            { id: 'PRESCRIPTIONS', label: 'Prescriptions', icon: 'prescriptions' },
+            { id: 'BILLING', label: 'Invoices & Receipts', icon: 'receipt_long' },
             { id: 'EMERGENCY', label: 'Emergency Requests', icon: 'emergency' }
           ].map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-title-sm text-title-sm transition-all whitespace-nowrap ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-medium transition-all whitespace-nowrap ${
                 activeTab === tab.id
-                  ? 'bg-primary text-white shadow-sm font-bold'
-                  : 'bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container hover:text-on-surface'
+                  ? 'bg-[#2D6A4F] text-white shadow-sm font-semibold'
+                  : 'bg-white dark:bg-[#1A2420] text-[#4A5F4E] dark:text-[#B8CCBC] hover:bg-[#F5F4EF] dark:hover:bg-[#1F2E28] border border-[#E2DDD6] dark:border-[#2E3E34]'
               }`}
             >
-              <span className="material-symbols-outlined text-[18px]">{tab.icon}</span>
+              <span className="material-symbols-outlined text-[17px]">{tab.icon}</span>
               <span>{tab.label}</span>
             </button>
           ))}
@@ -127,70 +127,70 @@ export const PatientPortalPage: React.FC = () => {
 
         {/* Payment Toast Notification */}
         {paySuccess && (
-          <div className="mb-6 p-4 rounded-xl bg-tertiary-fixed text-on-tertiary-fixed font-body-sm flex items-center gap-3 shadow-md animate-fadeIn">
-            <span className="material-symbols-outlined text-[24px] text-tertiary">check_circle</span>
+          <div className="mb-6 p-4 rounded-2xl bg-[#EAF5EE] dark:bg-[#1F2E28] text-[#2D6A4F] dark:text-[#74C69D] text-[13px] font-medium flex items-center gap-2.5 border border-[#C8D9CC] dark:border-[#2E3E34] animate-fadeIn">
+            <span className="material-symbols-outlined text-[20px]">check_circle</span>
             <span>{paySuccess}</span>
           </div>
         )}
 
         {/* Tab 1: Clinical Overview */}
         {activeTab === 'OVERVIEW' && (
-          <div className="space-y-space-lg">
-            {/* Vitals Telemetry Card */}
-            <div className="bg-surface-container-lowest rounded-2xl p-space-lg shadow-sm border border-surface-container-high">
-              <h3 className="font-title-md text-title-md text-primary font-bold mb-3 flex items-center gap-2">
-                <span className="material-symbols-outlined text-secondary">vital_signs</span>
-                <span>Latest Physiological Vitals (NABH Verified)</span>
+          <div className="space-y-6">
+            {/* Vitals Card */}
+            <div className="bg-[#FFFFFF] dark:bg-[#1A2420] rounded-2xl p-6 shadow-sm border border-[#E2DDD6] dark:border-[#2E3E34]">
+              <h3 className="text-[15px] font-bold text-[#1A2E1A] dark:text-[#E8EDE8] mb-4 flex items-center gap-2">
+                <span className="material-symbols-outlined text-[#2D6A4F]">vital_signs</span>
+                <span>Latest Health Vitals</span>
               </h3>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <div className="p-4 rounded-xl bg-surface-container-low border border-surface-container-high">
-                  <span className="text-[11px] text-outline uppercase font-semibold">Blood Pressure</span>
-                  <div className="font-headline-sm text-headline-sm text-primary font-bold mt-1">128/82</div>
-                  <span className="text-[11px] text-on-surface-variant">mmHg (Normal)</span>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
+                <div className="p-4 rounded-xl bg-[#F5F4EF] dark:bg-[#1F2E28] border border-[#E2DDD6] dark:border-[#2E3E34]">
+                  <span className="text-[11px] text-[#6B7F6E] dark:text-[#A8D5B5] uppercase font-semibold">Blood Pressure</span>
+                  <div className="text-[20px] font-bold text-[#1A2E1A] dark:text-[#E8EDE8] mt-1">128/82</div>
+                  <span className="text-[11px] text-[#4A5F4E] dark:text-[#B8CCBC]">mmHg (Healthy)</span>
                 </div>
-                <div className="p-4 rounded-xl bg-surface-container-low border border-surface-container-high">
-                  <span className="text-[11px] text-outline uppercase font-semibold">Pulse Rate</span>
-                  <div className="font-headline-sm text-headline-sm text-primary font-bold mt-1">74</div>
-                  <span className="text-[11px] text-on-surface-variant">bpm (Sinus Rhythm)</span>
+                <div className="p-4 rounded-xl bg-[#F5F4EF] dark:bg-[#1F2E28] border border-[#E2DDD6] dark:border-[#2E3E34]">
+                  <span className="text-[11px] text-[#6B7F6E] dark:text-[#A8D5B5] uppercase font-semibold">Pulse Rate</span>
+                  <div className="text-[20px] font-bold text-[#1A2E1A] dark:text-[#E8EDE8] mt-1">74</div>
+                  <span className="text-[11px] text-[#4A5F4E] dark:text-[#B8CCBC]">bpm (Resting)</span>
                 </div>
-                <div className="p-4 rounded-xl bg-surface-container-low border border-surface-container-high">
-                  <span className="text-[11px] text-outline uppercase font-semibold">Oxygen Saturation</span>
-                  <div className="font-headline-sm text-headline-sm text-secondary font-bold mt-1">99%</div>
-                  <span className="text-[11px] text-on-surface-variant">SpO2 on Room Air</span>
+                <div className="p-4 rounded-xl bg-[#F5F4EF] dark:bg-[#1F2E28] border border-[#E2DDD6] dark:border-[#2E3E34]">
+                  <span className="text-[11px] text-[#6B7F6E] dark:text-[#A8D5B5] uppercase font-semibold">Blood Oxygen (SpO2)</span>
+                  <div className="text-[20px] font-bold text-[#2D6A4F] dark:text-[#74C69D] mt-1">99%</div>
+                  <span className="text-[11px] text-[#4A5F4E] dark:text-[#B8CCBC]">Room Air</span>
                 </div>
-                <div className="p-4 rounded-xl bg-surface-container-low border border-surface-container-high">
-                  <span className="text-[11px] text-outline uppercase font-semibold">Glycated HbA1c</span>
-                  <div className="font-headline-sm text-headline-sm text-primary font-bold mt-1">7.1%</div>
-                  <span className="text-[11px] text-on-surface-variant">Fair Control</span>
+                <div className="p-4 rounded-xl bg-[#F5F4EF] dark:bg-[#1F2E28] border border-[#E2DDD6] dark:border-[#2E3E34]">
+                  <span className="text-[11px] text-[#6B7F6E] dark:text-[#A8D5B5] uppercase font-semibold">HbA1c</span>
+                  <div className="text-[20px] font-bold text-[#1A2E1A] dark:text-[#E8EDE8] mt-1">7.1%</div>
+                  <span className="text-[11px] text-[#4A5F4E] dark:text-[#B8CCBC]">Good Control</span>
                 </div>
               </div>
             </div>
 
             {/* Upcoming Consultations */}
-            <div className="bg-surface-container-lowest rounded-2xl p-space-lg shadow-sm border border-surface-container-high">
-              <h3 className="font-title-md text-title-md text-primary font-bold mb-3 flex items-center gap-2">
-                <span className="material-symbols-outlined text-secondary">calendar_today</span>
-                <span>Active Outpatient Consultations</span>
+            <div className="bg-[#FFFFFF] dark:bg-[#1A2420] rounded-2xl p-6 shadow-sm border border-[#E2DDD6] dark:border-[#2E3E34]">
+              <h3 className="text-[15px] font-bold text-[#1A2E1A] dark:text-[#E8EDE8] mb-4 flex items-center gap-2">
+                <span className="material-symbols-outlined text-[#2D6A4F]">calendar_today</span>
+                <span>Upcoming Appointments</span>
               </h3>
               <div className="space-y-3">
                 {INITIAL_APPOINTMENTS.map(apt => (
-                  <div key={apt.id} className="p-4 rounded-xl bg-surface-container-low border border-surface-container-high flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div key={apt.id} className="p-4 rounded-xl bg-[#F5F4EF] dark:bg-[#1F2E28] border border-[#E2DDD6] dark:border-[#2E3E34] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-title-sm text-title-sm text-primary font-bold">{apt.doctorName}</span>
-                        <span className="px-2 py-0.5 rounded bg-surface-container-high text-secondary text-[11px] font-semibold">{apt.departmentName}</span>
+                        <span className="font-bold text-[14px] text-[#1A2E1A] dark:text-[#E8EDE8]">{apt.doctorName}</span>
+                        <span className="px-2 py-0.5 rounded bg-[#EAF5EE] text-[#2D6A4F] text-[11px] font-semibold">{apt.departmentName}</span>
                       </div>
-                      <p className="text-body-sm text-on-surface-variant mt-0.5">{apt.doctorChamber}</p>
-                      <p className="text-[12px] text-outline mt-0.5 font-mono">Token: {apt.appointmentNumber}</p>
+                      <p className="text-[12px] text-[#6B7F6E] dark:text-[#B8CCBC] mt-0.5">{apt.doctorChamber}</p>
+                      <p className="text-[11px] text-[#7A8E7E] mt-0.5 font-mono">Reference: {apt.appointmentNumber}</p>
                     </div>
                     <div className="flex items-center gap-3">
                       <div className="text-right">
-                        <span className="font-title-sm text-title-sm text-primary font-bold block">{apt.slotDate}</span>
-                        <span className="text-[12px] text-secondary font-semibold">{apt.slotTime}</span>
+                        <span className="font-bold text-[13px] text-[#1A2E1A] dark:text-[#E8EDE8] block">{apt.slotDate}</span>
+                        <span className="text-[12px] text-[#2D6A4F] dark:text-[#74C69D] font-semibold">{apt.slotTime}</span>
                       </div>
                       <Link
                         to={`/s/${apt.shortLinkCode}`}
-                        className="px-3 py-1.5 rounded-lg bg-surface-container text-primary font-title-sm text-title-sm hover:bg-secondary hover:text-white transition-colors"
+                        className="px-3 py-1.5 rounded-xl bg-white dark:bg-[#16201B] border border-[#E2DDD6] dark:border-[#2E3E34] text-[#2D6A4F] dark:text-[#74C69D] text-[12px] font-semibold hover:bg-[#EAF5EE] transition-colors"
                       >
                         View Slip
                       </Link>
@@ -204,28 +204,28 @@ export const PatientPortalPage: React.FC = () => {
 
         {/* Tab 2: Appointments */}
         {activeTab === 'APPOINTMENTS' && (
-          <div className="bg-surface-container-lowest rounded-2xl p-space-lg shadow-sm border border-surface-container-high">
+          <div className="bg-[#FFFFFF] dark:bg-[#1A2420] rounded-2xl p-6 shadow-sm border border-[#E2DDD6] dark:border-[#2E3E34]">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-headline-sm text-headline-sm text-primary font-bold">Consultation History & Schedule</h3>
-              <Link to="/appointments/new" className="px-4 py-2 rounded-xl bg-primary text-white font-title-sm hover:bg-secondary transition-colors">
-                Book Slot
+              <h3 className="text-[16px] font-bold text-[#1A2E1A] dark:text-[#E8EDE8]">Consultation Schedule</h3>
+              <Link to="/appointments/new" className="px-3.5 py-1.5 rounded-xl bg-[#2D6A4F] text-white text-[12px] font-semibold hover:bg-[#1B4332] transition-colors">
+                Book Visit
               </Link>
             </div>
-            <div className="divide-y divide-surface-container-high">
+            <div className="divide-y divide-[#E2DDD6] dark:divide-[#2E3E34]">
               {INITIAL_APPOINTMENTS.map(apt => (
-                <div key={apt.id} className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div key={apt.id} className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-[13px]">
                   <div>
-                    <span className="font-mono text-[12px] text-secondary font-bold block">{apt.appointmentNumber}</span>
-                    <h4 className="font-title-md text-title-md text-primary font-bold">{apt.doctorName}</h4>
-                    <span className="text-body-sm text-on-surface-variant">{apt.doctorChamber} • Reason: {apt.reasonForVisit}</span>
+                    <span className="font-mono text-[11px] text-[#2D6A4F] font-bold block">{apt.appointmentNumber}</span>
+                    <h4 className="font-bold text-[#1A2E1A] dark:text-[#E8EDE8] text-[14px]">{apt.doctorName}</h4>
+                    <span className="text-[#6B7F6E] dark:text-[#B8CCBC]">{apt.doctorChamber} • Reason: {apt.reasonForVisit}</span>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="px-3 py-1 rounded-full bg-secondary-fixed text-on-secondary-fixed text-label-sm font-semibold">
+                    <span className="px-2.5 py-0.5 rounded-full bg-[#EAF5EE] text-[#2D6A4F] text-[11px] font-semibold">
                       {apt.status}
                     </span>
                     <Link
                       to={`/appointments/${apt.appointmentNumber}/confirmation?doctor=${encodeURIComponent(apt.doctorName)}`}
-                      className="px-3 py-1.5 rounded-lg bg-surface-container text-primary font-title-sm hover:bg-secondary hover:text-white transition-colors"
+                      className="px-3 py-1.5 rounded-xl bg-[#F5F4EF] dark:bg-[#1F2E28] text-[#1A2E1A] dark:text-[#E8EDE8] text-[12px] font-medium hover:bg-[#EFECE6] transition-colors border border-[#E2DDD6] dark:border-[#2E3E34]"
                     >
                       Details
                     </Link>
@@ -238,162 +238,108 @@ export const PatientPortalPage: React.FC = () => {
 
         {/* Tab 3: Records */}
         {activeTab === 'RECORDS' && (
-          <div className="bg-surface-container-lowest rounded-2xl p-space-lg shadow-sm border border-surface-container-high">
-            <h3 className="font-headline-sm text-headline-sm text-primary font-bold mb-4">Clinical EMR Notes & Diagnostic Reports</h3>
-            {loading ? (
-              <div className="py-8 text-center text-on-surface-variant animate-pulse font-body-sm">Loading verified clinical records from PostgreSQL...</div>
-            ) : records.length === 0 ? (
-              <div className="py-8 text-center text-outline font-body-sm">No clinical records on file.</div>
-            ) : (
-              <div className="space-y-4">
-                {records.map(rec => (
-                  <div key={rec.id} className="p-4 rounded-xl bg-surface-container-low border border-surface-container-high">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="px-2.5 py-0.5 rounded bg-primary text-white text-[11px] font-semibold">{rec.recordType}</span>
-                      <span className="text-[12px] text-on-surface-variant font-mono">{rec.date}</span>
-                    </div>
-                    <h4 className="font-title-md text-title-md text-primary font-bold">{rec.title}</h4>
-                    <p className="text-body-sm text-on-surface-variant mt-2 leading-relaxed">{rec.summary}</p>
-                    <div className="mt-3 pt-2 border-t border-surface-container-high/60 text-[11px] text-outline flex items-center justify-between">
-                      <span>Authorized Signature: {rec.authorDoctor}</span>
-                      <span>Audit Logged • SHA-256 Verified</span>
-                    </div>
+          <div className="bg-[#FFFFFF] dark:bg-[#1A2420] rounded-2xl p-6 shadow-sm border border-[#E2DDD6] dark:border-[#2E3E34]">
+            <h3 className="text-[16px] font-bold text-[#1A2E1A] dark:text-[#E8EDE8] mb-4">Diagnostic Reports & Clinical Notes</h3>
+            <div className="space-y-3">
+              {records.map(rec => (
+                <div key={rec.id} className="p-4 rounded-xl bg-[#F5F4EF] dark:bg-[#1F2E28] border border-[#E2DDD6] dark:border-[#2E3E34] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-[13px]">
+                  <div>
+                    <h4 className="font-bold text-[#1A2E1A] dark:text-[#E8EDE8]">{rec.title}</h4>
+                    <p className="text-[12px] text-[#6B7F6E] dark:text-[#B8CCBC] mt-0.5">{rec.authorDoctor} · {rec.date}</p>
+                    <p className="text-[12px] text-[#4A5F4E] dark:text-[#B8CCBC] mt-1">{rec.summary}</p>
                   </div>
-                ))}
-              </div>
-            )}
+                  <span className="px-2.5 py-0.5 rounded-full bg-[#EAF5EE] text-[#2D6A4F] text-[11px] font-semibold self-start sm:self-auto">
+                    Verified
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
         {/* Tab 4: Prescriptions */}
         {activeTab === 'PRESCRIPTIONS' && (
-          <div className="bg-surface-container-lowest rounded-2xl p-space-lg shadow-sm border border-surface-container-high">
-            <h3 className="font-headline-sm text-headline-sm text-primary font-bold mb-4">Current Prescriptions</h3>
-            {loading ? (
-              <div className="py-8 text-center text-on-surface-variant animate-pulse font-body-sm">Loading digital prescriptions...</div>
-            ) : prescriptions.length === 0 ? (
-              <div className="py-8 text-center text-outline font-body-sm">No prescriptions on file.</div>
-            ) : (
-              <div className="space-y-4">
-                {prescriptions.map(rx => (
-                  <div key={rx.id} className="p-4 rounded-xl bg-surface-container-low border border-surface-container-high">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-mono text-secondary font-bold text-title-sm">Rx #{rx.id}</span>
-                      <span className="text-[12px] text-on-surface-variant font-mono">{rx.date}</span>
-                    </div>
-                    <p className="text-body-sm text-primary font-semibold mb-3">Diagnosis: {rx.diagnosis}</p>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left text-body-sm border-collapse">
-                        <thead>
-                          <tr className="bg-surface-container text-on-surface-variant text-[11px] uppercase">
-                            <th className="p-2 rounded-l">Medicine</th>
-                            <th className="p-2">Dosage</th>
-                            <th className="p-2">Frequency</th>
-                            <th className="p-2">Duration</th>
-                            <th className="p-2 rounded-r">Qty</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-surface-container-high">
-                          {rx.items.map((it, idx) => (
-                            <tr key={idx}>
-                              <td className="p-2 font-semibold text-primary">{it.medicineName}</td>
-                              <td className="p-2">{it.dosage}</td>
-                              <td className="p-2">{it.frequency}</td>
-                              <td className="p-2">{it.duration}</td>
-                              <td className="p-2 font-mono font-bold">{it.quantity}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+          <div className="bg-[#FFFFFF] dark:bg-[#1A2420] rounded-2xl p-6 shadow-sm border border-[#E2DDD6] dark:border-[#2E3E34]">
+            <h3 className="text-[16px] font-bold text-[#1A2E1A] dark:text-[#E8EDE8] mb-4">Current Prescriptions</h3>
+            <div className="space-y-3">
+              {prescriptions.map(p => (
+                <div key={p.id} className="p-4 rounded-xl bg-[#F5F4EF] dark:bg-[#1F2E28] border border-[#E2DDD6] dark:border-[#2E3E34] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-[13px]">
+                  <div>
+                    <h4 className="font-bold text-[#1A2E1A] dark:text-[#E8EDE8]">{p.doctorName}</h4>
+                    <p className="text-[12px] text-[#6B7F6E] dark:text-[#B8CCBC] mt-0.5">{p.date} · {p.diagnosis}</p>
+                    <div className="mt-2 space-y-1">
+                      {p.items?.map((m, i) => (
+                        <p key={i} className="text-[12px] text-[#4A5F4E] dark:text-[#B8CCBC]">
+                          • <strong>{m.medicineName}</strong> — {m.dosage} ({m.frequency}) for {m.duration}
+                        </p>
+                      ))}
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
+                  <span className="px-2.5 py-0.5 rounded-full bg-[#EAF5EE] text-[#2D6A4F] text-[11px] font-semibold self-start sm:self-auto">
+                    Active Rx
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
         {/* Tab 5: Billing */}
         {activeTab === 'BILLING' && (
-          <div className="bg-surface-container-lowest rounded-2xl p-space-lg shadow-sm border border-surface-container-high">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="font-headline-sm text-headline-sm text-primary font-bold">Invoices & Billing Statements</h3>
-              <span className="px-2.5 py-1 rounded-full bg-secondary-fixed/50 text-secondary text-[11px] font-semibold border border-secondary/20">
-                Simulated Sandbox Gateway
-              </span>
-            </div>
-            <p className="text-body-sm text-outline mb-4">
-              Academic Prototype: Payments simulate idempotent transitions to PAID status without storing real payment-card credentials.
-            </p>
-            {loading ? (
-              <div className="py-8 text-center text-on-surface-variant animate-pulse font-body-sm">Loading billing invoices from PostgreSQL...</div>
-            ) : invoices.length === 0 ? (
-              <div className="py-8 text-center text-outline font-body-sm">No invoices recorded.</div>
-            ) : (
-              <div className="space-y-4">
-                {invoices.map(inv => (
-                  <div key={inv.id} className="p-4 rounded-xl bg-surface-container-low border border-surface-container-high flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-title-sm text-primary font-bold">{inv.invoiceNumber}</span>
-                        <span className={`px-2.5 py-0.5 rounded text-[11px] font-bold ${inv.status === 'PAID' ? 'bg-secondary-fixed text-on-secondary-fixed' : 'bg-error-container text-on-error-container'}`}>
-                          {inv.status}
-                        </span>
-                      </div>
-                      <div className="space-y-1 mt-2 text-body-sm">
-                        {inv.items.map((it, i) => (
-                          <div key={i} className="text-on-surface-variant text-[13px]">
-                            • {it.description} — ₹{it.amount.toFixed(2)}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col sm:items-end gap-2 shrink-0">
-                      <span className="font-headline-sm text-headline-sm text-primary font-bold">
-                        ₹{inv.totalAmount.toFixed(2)}
-                      </span>
-                      {inv.status !== 'PAID' && (
-                        <button
-                          type="button"
-                          onClick={() => handleSimulatePayment(inv.id)}
-                          className="px-4 py-2 rounded-xl bg-secondary text-white font-title-sm hover:bg-primary transition-colors shadow-sm"
-                        >
-                          Simulate Payment (Idempotent)
-                        </button>
-                      )}
-                    </div>
+          <div className="bg-[#FFFFFF] dark:bg-[#1A2420] rounded-2xl p-6 shadow-sm border border-[#E2DDD6] dark:border-[#2E3E34]">
+            <h3 className="text-[16px] font-bold text-[#1A2E1A] dark:text-[#E8EDE8] mb-4">Invoices & Receipts</h3>
+            <div className="space-y-3">
+              {invoices.map(inv => (
+                <div key={inv.id} className="p-4 rounded-xl bg-[#F5F4EF] dark:bg-[#1F2E28] border border-[#E2DDD6] dark:border-[#2E3E34] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-[13px]">
+                  <div>
+                    <span className="font-mono text-[11px] text-[#6B7F6E] dark:text-[#A8D5B5] font-bold block">{inv.invoiceNumber}</span>
+                    <h4 className="font-bold text-[#1A2E1A] dark:text-[#E8EDE8]">{inv.items?.[0]?.description || 'Clinical Care Services'}</h4>
+                    <p className="text-[12px] text-[#6B7F6E] dark:text-[#B8CCBC]">{inv.date}</p>
                   </div>
-                ))}
-              </div>
-            )}
+                  <div className="flex items-center gap-3">
+                    <span className="font-bold text-[15px] text-[#1A2E1A] dark:text-[#E8EDE8]">₹{inv.totalAmount.toLocaleString()}</span>
+                    {inv.status === 'PAID' ? (
+                      <span className="px-2.5 py-0.5 rounded-full bg-[#EAF5EE] text-[#2D6A4F] text-[11px] font-semibold">
+                        Paid
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => handleSimulatePayment(inv.id)}
+                        className="px-3 py-1 rounded-xl bg-[#2D6A4F] text-white text-[12px] font-semibold hover:bg-[#1B4332] transition-colors"
+                      >
+                        Pay Online
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
         {/* Tab 6: Emergency Requests */}
         {activeTab === 'EMERGENCY' && (
-          <div className="bg-surface-container-lowest rounded-2xl p-space-lg shadow-sm border border-surface-container-high">
-            <h3 className="font-headline-sm text-headline-sm text-primary font-bold mb-4">Emergency Incident Status</h3>
-            {emergencyList.length === 0 ? (
-              <div className="py-8 text-center text-outline font-body-sm">No emergency requests active.</div>
-            ) : (
-              <div className="space-y-3">
-                {emergencyList.map(em => (
-                  <div key={em.id} className="p-4 rounded-xl bg-error-container/30 border border-error/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-error font-bold text-title-sm">{em.requestNumber}</span>
-                        <span className="px-2 py-0.5 rounded bg-error text-white text-[11px] font-bold">{em.priority}</span>
-                        <span className="px-2 py-0.5 rounded bg-surface-container text-on-surface text-[11px]">{em.status}</span>
-                      </div>
-                      <p className="text-body-sm text-on-surface-variant mt-1">{em.symptoms}</p>
-                      <p className="text-[12px] text-on-surface-variant mt-0.5">Assigned: {em.assignedRoom} • {em.assignedDoctor}</p>
-                    </div>
-                    <span className="text-title-sm text-error font-bold">{em.waitTime} Wait</span>
+          <div className="bg-[#FFFFFF] dark:bg-[#1A2420] rounded-2xl p-6 shadow-sm border border-[#E2DDD6] dark:border-[#2E3E34]">
+            <h3 className="text-[16px] font-bold text-[#1A2E1A] dark:text-[#E8EDE8] mb-4">Emergency Care Requests</h3>
+            <div className="space-y-3">
+              {emergencyList.map(req => (
+                <div key={req.id} className="p-4 rounded-xl bg-[#F5F4EF] dark:bg-[#1F2E28] border border-[#E2DDD6] dark:border-[#2E3E34] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-[13px]">
+                  <div>
+                    <span className="font-bold text-[#C44B4B]">{req.requestNumber}</span>
+                    <p className="font-semibold text-[#1A2E1A] dark:text-[#E8EDE8] mt-0.5">{req.patientName}</p>
+                    <p className="text-[12px] text-[#6B7F6E] dark:text-[#B8CCBC]">{req.symptoms}</p>
                   </div>
-                ))}
-              </div>
-            )}
+                  <div className="text-right">
+                    <span className={`inline-block px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
+                      req.priority.includes('STAT') ? 'bg-[#FDECEA] text-[#C44B4B]' : 'bg-[#EAF5EE] text-[#2D6A4F]'
+                    }`}>
+                      {req.priority}
+                    </span>
+                    <p className="text-[11px] text-[#7A8E7E] mt-1">{req.assignedRoom}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>

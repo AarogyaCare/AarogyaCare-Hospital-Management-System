@@ -75,103 +75,100 @@ export const AppointmentBookingPage: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col w-full min-h-screen">
-      {/* 1. System Architecture Simulation Banner */}
-      <div className="w-full bg-primary text-on-primary px-gutter-mobile lg:px-margin py-2.5">
-        <div className="max-w-[1360px] mx-auto flex flex-wrap items-center justify-between gap-space-sm text-label-sm font-label-sm">
-          <div className="flex items-center gap-space-sm">
-            <span className="inline-flex items-center justify-center w-2 h-2 rounded-full bg-tertiary-fixed animate-pulse"></span>
-            <span className="font-title-sm text-title-sm tracking-wide text-tertiary-fixed">
-              DISTRIBUTED CONCURRENCY ENGINE
+    <div className="flex flex-col w-full min-h-screen bg-[#FAFAF7] dark:bg-[#111814] text-[#1A2E1A] dark:text-[#E8EDE8] font-sans">
+      {/* 1. Reassuring Patient Banner */}
+      <div className="w-full bg-[#1A2E1A] text-[#FAFAF7] px-4 lg:px-8 py-2.5">
+        <div className="max-w-[1360px] mx-auto flex flex-wrap items-center justify-between gap-2 text-[12px] font-medium">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-[#52B788] animate-pulse"></span>
+            <span className="font-semibold text-white">
+              RESERVED TIME HELD FOR YOU
             </span>
-            <span className="text-on-primary-container hidden md:inline">
-              | Redis Slot Lock (TTL: 600s) • UUIDv4 Generation • Token Bucket Quotas
+            <span className="text-[#A8D5B5] hidden md:inline">
+              • Guaranteed no double-booking while you complete your details
             </span>
           </div>
-          <div className="flex items-center gap-space-md text-on-primary-container">
-            <span>Region: <strong className="text-on-primary">ap-south-1 (Chennai DC)</strong></span>
-            <span>Latency: <strong className="text-tertiary-fixed font-title-sm">14ms</strong></span>
-            <span className="px-2 py-0.5 rounded bg-surface-container-high/20 text-tertiary-fixed font-label-sm">
-              Sandbox Active
-            </span>
+          <div className="flex items-center gap-3 text-[#A8D5B5]">
+            <span>Chennai Campus</span>
+            <span>•</span>
+            <span className="text-white">Instant Confirmation</span>
           </div>
         </div>
       </div>
 
-      {/* 2. Hero-style Stepper Header */}
-      <div className="w-full bg-surface-container-low py-space-lg shadow-sm border-b border-surface-container-high/70">
-        <div className="max-w-[1360px] mx-auto px-gutter-mobile lg:px-margin">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-space-md mb-space-lg">
+      {/* 2. Header & Stepper */}
+      <div className="w-full bg-[#FFFFFF] dark:bg-[#16201B] py-6 shadow-sm border-b border-[#E2DDD6] dark:border-[#2E3E34]">
+        <div className="max-w-[1360px] mx-auto px-4 lg:px-8">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <span className="px-2.5 py-0.5 rounded-full bg-secondary-fixed text-on-secondary-fixed font-label-sm text-label-sm">
-                  Outpatient Clinical Intake
+                <span className="px-2.5 py-0.5 rounded-full bg-[#EAF5EE] dark:bg-[#1F2E28] text-[#2D6A4F] dark:text-[#74C69D] text-[11px] font-semibold">
+                  Outpatient Clinic
                 </span>
-                <span className="text-on-surface-variant font-body-sm text-body-sm">
-                  • High-Throughput Booking Gateway
+                <span className="text-[#6B7F6E] dark:text-[#B8CCBC] text-[12px]">
+                  Schedule your consultation
                 </span>
               </div>
-              <h1 className="page-heading text-primary tracking-tight">
-                Clinical Appointment Reservation
+              <h1 className="text-2xl md:text-3xl font-bold text-[#1A2E1A] dark:text-[#E8EDE8] tracking-tight">
+                Book Your Doctor Visit
               </h1>
             </div>
 
             {/* Countdown Timer */}
-            <div className="flex items-center gap-3 bg-surface-container-lowest px-4 py-2.5 rounded-xl shadow-sm border border-surface-container-high">
+            <div className="flex items-center gap-3 bg-[#F5F4EF] dark:bg-[#1F2E28] px-4 py-2.5 rounded-2xl border border-[#E2DDD6] dark:border-[#2E3E34]">
               <div className="flex flex-col text-right">
-                <span className="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">
-                  Slot Lock Expiry
+                <span className="text-[11px] text-[#6B7F6E] dark:text-[#A8D5B5] uppercase tracking-wider font-semibold">
+                  Slot Held For
                 </span>
-                <span className="font-headline-sm text-headline-sm text-error font-mono font-bold">
+                <span className="text-lg text-[#C44B4B] font-mono font-bold leading-tight">
                   {formatTimer(secondsRemaining)}
                 </span>
               </div>
-              <div className="w-9 h-9 rounded-lg bg-error-container text-on-error-container flex items-center justify-center">
-                <span className="material-symbols-outlined text-[20px] text-error">lock_clock</span>
+              <div className="w-9 h-9 rounded-xl bg-[#FDECEA] dark:bg-[#2A1A1A] text-[#C44B4B] flex items-center justify-center">
+                <span className="material-symbols-outlined text-[19px]">schedule</span>
               </div>
             </div>
           </div>
 
           {/* 4-Step Progress Navigation */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-space-sm relative">
-            <div className="flex items-center gap-space-sm p-space-sm rounded-xl bg-surface-container-lowest shadow-sm opacity-90 border border-surface-container-high">
-              <div className="w-8 h-8 rounded-lg bg-secondary text-on-secondary flex items-center justify-center font-title-sm text-title-sm shadow-sm">
-                <span className="material-symbols-outlined text-[18px]">check</span>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="flex items-center gap-3 p-3 rounded-2xl bg-[#F5F4EF] dark:bg-[#1F2E28] border border-[#E2DDD6] dark:border-[#2E3E34]">
+              <div className="w-8 h-8 rounded-xl bg-[#2D6A4F] text-white flex items-center justify-center text-xs font-bold shadow-sm">
+                <span className="material-symbols-outlined text-[16px]">check</span>
               </div>
               <div className="flex flex-col min-w-0">
-                <span className="font-label-sm text-label-sm text-on-surface-variant uppercase">Step 01</span>
-                <span className="font-title-sm text-title-sm text-primary truncate">Doctor & Specialty</span>
+                <span className="text-[10px] text-[#6B7F6E] dark:text-[#A8D5B5] uppercase font-bold">Step 1</span>
+                <span className="text-[13px] font-semibold text-[#1A2E1A] dark:text-[#E8EDE8] truncate">Doctor Selected</span>
               </div>
             </div>
 
-            <div className="flex items-center gap-space-sm p-space-sm rounded-xl bg-surface-container-lowest shadow-sm opacity-90 border border-surface-container-high">
-              <div className="w-8 h-8 rounded-lg bg-secondary text-on-secondary flex items-center justify-center font-title-sm text-title-sm shadow-sm">
-                <span className="material-symbols-outlined text-[18px]">check</span>
+            <div className="flex items-center gap-3 p-3 rounded-2xl bg-[#F5F4EF] dark:bg-[#1F2E28] border border-[#E2DDD6] dark:border-[#2E3E34]">
+              <div className="w-8 h-8 rounded-xl bg-[#2D6A4F] text-white flex items-center justify-center text-xs font-bold shadow-sm">
+                <span className="material-symbols-outlined text-[16px]">check</span>
               </div>
               <div className="flex flex-col min-w-0">
-                <span className="font-label-sm text-label-sm text-on-surface-variant uppercase">Step 02</span>
-                <span className="font-title-sm text-title-sm text-primary truncate">Slot Locked</span>
+                <span className="text-[10px] text-[#6B7F6E] dark:text-[#A8D5B5] uppercase font-bold">Step 2</span>
+                <span className="text-[13px] font-semibold text-[#1A2E1A] dark:text-[#E8EDE8] truncate">Time Slot Locked</span>
               </div>
             </div>
 
-            <div className="flex items-center gap-space-sm p-space-sm rounded-xl bg-primary text-on-primary shadow-md relative overflow-hidden">
-              <div className="absolute right-0 top-0 bottom-0 w-1.5 bg-secondary-container"></div>
-              <div className="w-8 h-8 rounded-lg bg-surface-container-lowest text-primary flex items-center justify-center font-title-sm text-title-sm font-bold">
+            <div className="flex items-center gap-3 p-3 rounded-2xl bg-[#2D6A4F] text-white shadow-md relative overflow-hidden">
+              <div className="w-8 h-8 rounded-xl bg-white text-[#2D6A4F] flex items-center justify-center text-xs font-bold">
                 3
               </div>
               <div className="flex flex-col min-w-0">
-                <span className="font-label-sm text-label-sm text-primary-fixed uppercase">Active Stage</span>
-                <span className="font-title-sm text-title-sm text-on-primary truncate">Patient Intake & UHID</span>
+                <span className="text-[10px] text-[#D8F3DC] uppercase font-bold">Current Step</span>
+                <span className="text-[13px] font-semibold text-white truncate">Patient Details</span>
               </div>
             </div>
 
-            <div className="flex items-center gap-space-sm p-space-sm rounded-xl bg-surface-container-lowest/60 text-on-surface-variant border border-surface-container-high/60">
-              <div className="w-8 h-8 rounded-lg bg-surface-container-high text-on-surface-variant flex items-center justify-center font-title-sm text-title-sm">
+            <div className="flex items-center gap-3 p-3 rounded-2xl bg-[#F5F4EF]/60 dark:bg-[#1F2E28]/60 text-[#7A8E7E] border border-[#E2DDD6] dark:border-[#2E3E34]">
+              <div className="w-8 h-8 rounded-xl bg-[#EFECE6] dark:bg-[#2A3A2E] text-[#7A8E7E] flex items-center justify-center text-xs font-bold">
                 4
               </div>
               <div className="flex flex-col min-w-0">
-                <span className="font-label-sm text-label-sm text-on-surface-variant uppercase">Step 04</span>
-                <span className="font-title-sm text-title-sm text-on-surface-variant truncate">Order Confirmation</span>
+                <span className="text-[10px] uppercase font-bold">Step 4</span>
+                <span className="text-[13px] font-medium truncate">Confirmation</span>
               </div>
             </div>
           </div>
@@ -179,50 +176,45 @@ export const AppointmentBookingPage: React.FC = () => {
       </div>
 
       {/* 3. Main Form & Booking Summary Grid */}
-      <div className="max-w-[1360px] mx-auto w-full px-gutter-mobile lg:px-margin py-space-xl">
-        <form onSubmit={handleConfirmReservation} className="grid grid-cols-1 lg:grid-cols-12 gap-space-lg items-start">
+      <div className="max-w-[1360px] mx-auto w-full px-4 lg:px-8 py-8">
+        <form onSubmit={handleConfirmReservation} className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* Left Panel: Intake Form */}
-          <div className="lg:col-span-8 flex flex-col gap-space-lg">
+          <div className="lg:col-span-8 flex flex-col gap-6">
             {errorMessage && (
-              <div className="bg-error-container text-on-error-container p-4 rounded-xl flex items-center gap-3 border border-error/30 shadow-sm animate-fadeIn">
-                <span className="material-symbols-outlined text-[24px] text-error shrink-0">error</span>
+              <div className="bg-[#FDECEA] text-[#C44B4B] p-4 rounded-2xl flex items-center gap-3 border border-[#F5BDB8] shadow-sm animate-fadeIn">
+                <span className="material-symbols-outlined text-[24px] text-[#C44B4B] shrink-0">error</span>
                 <div className="flex flex-col">
-                  <span className="font-title-sm text-title-sm font-bold text-error">Booking Reservation Conflict</span>
-                  <span className="text-body-sm text-on-error-container">{errorMessage}</span>
+                  <span className="text-[14px] font-bold">Appointment Notice</span>
+                  <span className="text-[13px]">{errorMessage}</span>
                 </div>
               </div>
             )}
 
-            {/* Concurrency Lock Live Status Card */}
-            <div className="bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex items-start gap-space-md border border-surface-container-high">
-              <div className="w-10 h-10 rounded-lg bg-tertiary text-on-tertiary flex items-center justify-center shrink-0">
-                <span className="material-symbols-outlined text-[22px]">verified_user</span>
+            {/* Reassurance Card */}
+            <div className="bg-[#FFFFFF] dark:bg-[#1A2420] rounded-2xl p-4 shadow-sm flex items-start gap-3.5 border border-[#E2DDD6] dark:border-[#2E3E34]">
+              <div className="w-10 h-10 rounded-xl bg-[#EAF5EE] dark:bg-[#1F2E28] text-[#2D6A4F] dark:text-[#74C69D] flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-[22px]">verified</span>
               </div>
-              <div className="flex flex-col gap-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-title-sm text-title-sm text-primary font-bold">Concurrency Lock Active</span>
-                  <span className="px-2 py-0.5 rounded-full bg-surface-container-high text-primary font-mono text-[11px]">
-                    TOKEN: redis_lock_{doctor.id}_slot_1015am
-                  </span>
-                </div>
-                <p className="font-body-sm text-body-sm text-on-surface-variant">
-                  This candidate slot is locked exclusively for your session. Final booking commits atomically in a single PostgreSQL transaction.
+              <div className="flex flex-col gap-0.5">
+                <span className="text-[14px] font-bold text-[#1A2E1A] dark:text-[#E8EDE8]">Slot Exclusively Reserved</span>
+                <p className="text-[13px] text-[#4A5F4E] dark:text-[#B8CCBC] leading-relaxed">
+                  We have reserved this consultation time exclusively for you. Your booking will be instantly confirmed upon submission.
                 </p>
               </div>
             </div>
 
             {/* Mode of Consultation Cards */}
-            <div className="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm border border-surface-container-high">
-              <h3 className="font-title-md text-title-md text-primary font-bold mb-3">
-                1. Select Consultation Modality
+            <div className="bg-[#FFFFFF] dark:bg-[#1A2420] rounded-2xl p-6 shadow-sm border border-[#E2DDD6] dark:border-[#2E3E34]">
+              <h3 className="text-[15px] font-bold text-[#1A2E1A] dark:text-[#E8EDE8] mb-3">
+                1. Select How You Would Like to Meet
               </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div
                   onClick={() => setConsultationMode('IN_PERSON')}
-                  className={`p-4 rounded-xl border cursor-pointer transition-all flex items-start gap-3 ${
+                  className={`p-4 rounded-2xl border cursor-pointer transition-all flex items-start gap-3 ${
                     consultationMode === 'IN_PERSON'
-                      ? 'bg-surface-container-high border-secondary shadow-sm'
-                      : 'bg-surface-container-lowest border-surface-container-high hover:border-secondary'
+                      ? 'bg-[#EAF5EE] dark:bg-[#1F2E28] border-[#2D6A4F] shadow-sm'
+                      : 'bg-white dark:bg-[#1A2420] border-[#E2DDD6] dark:border-[#2E3E34] hover:border-[#2D6A4F]'
                   }`}
                 >
                   <input
@@ -230,24 +222,24 @@ export const AppointmentBookingPage: React.FC = () => {
                     name="mode"
                     checked={consultationMode === 'IN_PERSON'}
                     onChange={() => setConsultationMode('IN_PERSON')}
-                    className="mt-1"
+                    className="mt-1 text-[#2D6A4F]"
                   />
                   <div>
-                    <span className="font-title-sm text-title-sm text-primary block font-semibold">
-                      In-Person OPD Consult
+                    <span className="text-[14px] font-bold text-[#1A2E1A] dark:text-[#E8EDE8] block">
+                      In-Person Hospital Visit
                     </span>
-                    <span className="text-[12px] text-on-surface-variant block mt-0.5">
-                      {doctor.chamberRoom} • Comprehensive physical evaluation
+                    <span className="text-[12px] text-[#4A5F4E] dark:text-[#B8CCBC] block mt-0.5">
+                      {doctor.chamberRoom} • Comprehensive examination at clinic
                     </span>
                   </div>
                 </div>
 
                 <div
                   onClick={() => setConsultationMode('TELE_CONSULT')}
-                  className={`p-4 rounded-xl border cursor-pointer transition-all flex items-start gap-3 ${
+                  className={`p-4 rounded-2xl border cursor-pointer transition-all flex items-start gap-3 ${
                     consultationMode === 'TELE_CONSULT'
-                      ? 'bg-surface-container-high border-secondary shadow-sm'
-                      : 'bg-surface-container-lowest border-surface-container-high hover:border-secondary'
+                      ? 'bg-[#EAF5EE] dark:bg-[#1F2E28] border-[#2D6A4F] shadow-sm'
+                      : 'bg-white dark:bg-[#1A2420] border-[#E2DDD6] dark:border-[#2E3E34] hover:border-[#2D6A4F]'
                   }`}
                 >
                   <input
@@ -255,152 +247,86 @@ export const AppointmentBookingPage: React.FC = () => {
                     name="mode"
                     checked={consultationMode === 'TELE_CONSULT'}
                     onChange={() => setConsultationMode('TELE_CONSULT')}
-                    className="mt-1"
+                    className="mt-1 text-[#2D6A4F]"
                   />
                   <div>
-                    <span className="font-title-sm text-title-sm text-primary block font-semibold">
-                      HD Video Tele-Consult
+                    <span className="text-[14px] font-bold text-[#1A2E1A] dark:text-[#E8EDE8] block">
+                      Secure Video Consultation
                     </span>
-                    <span className="text-[12px] text-on-surface-variant block mt-0.5">
-                      Encrypted browser link delivered via SMS & short-url
+                    <span className="text-[12px] text-[#4A5F4E] dark:text-[#B8CCBC] block mt-0.5">
+                      Online video call from home • Digital prescription included
                     </span>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Patient Identification: UHID vs New Registration */}
-            <div className="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm border border-surface-container-high">
-              <div className="flex items-center justify-between mb-4 border-b border-surface-container-high pb-3">
-                <h3 className="font-title-md text-title-md text-primary font-bold">
-                  2. Patient Identification & UHID
-                </h3>
-                <div className="flex items-center gap-1 bg-surface-container p-1 rounded-xl">
-                  <button
-                    type="button"
-                    onClick={() => setPatientType('EXISTING')}
-                    className={`px-3 py-1 rounded-lg text-label-sm font-semibold transition-all ${
-                      patientType === 'EXISTING' ? 'bg-primary text-white shadow-sm' : 'text-on-surface-variant'
-                    }`}
-                  >
-                    Existing UHID
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPatientType('NEW')}
-                    className={`px-3 py-1 rounded-lg text-label-sm font-semibold transition-all ${
-                      patientType === 'NEW' ? 'bg-primary text-white shadow-sm' : 'text-on-surface-variant'
-                    }`}
-                  >
-                    New Patient
-                  </button>
+            {/* Patient Information Form */}
+            <div className="bg-[#FFFFFF] dark:bg-[#1A2420] rounded-2xl p-6 shadow-sm border border-[#E2DDD6] dark:border-[#2E3E34]">
+              <h3 className="text-[15px] font-bold text-[#1A2E1A] dark:text-[#E8EDE8] mb-4">
+                2. Patient Information
+              </h3>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="text-[12px] font-semibold text-[#4A5F4E] dark:text-[#A8D5B5] block mb-1.5">
+                    Patient Full Name
+                  </label>
+                  <input
+                    type="text"
+                    value={patientName}
+                    onChange={(e) => setPatientName(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#E2DDD6] dark:border-[#2E3E34] bg-[#FAFAF7] dark:bg-[#16201B] text-[13px] text-[#1A2E1A] dark:text-[#E8EDE8] outline-none focus:border-[#2D6A4F]"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="text-[12px] font-semibold text-[#4A5F4E] dark:text-[#A8D5B5] block mb-1.5">
+                    Phone Number
+                  </label>
+                  <input
+                    type="tel"
+                    value={patientPhone}
+                    onChange={(e) => setPatientPhone(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-[#E2DDD6] dark:border-[#2E3E34] bg-[#FAFAF7] dark:bg-[#16201B] text-[13px] text-[#1A2E1A] dark:text-[#E8EDE8] outline-none focus:border-[#2D6A4F]"
+                    required
+                  />
                 </div>
               </div>
 
-              {patientType === 'EXISTING' ? (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block font-label-md text-label-md text-on-surface-variant mb-1">
-                        Hospital UHID Number
-                      </label>
-                      <input
-                        type="text"
-                        value={uhid}
-                        onChange={(e) => setUhid(e.target.value)}
-                        className="w-full h-11 px-3 rounded-xl bg-surface-container-low text-on-surface font-title-sm focus:outline-none focus:ring-2 focus:ring-secondary border border-surface-container-high"
-                        placeholder="e.g. AC-2024-9104"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block font-label-md text-label-md text-on-surface-variant mb-1">
-                        Patient Full Name
-                      </label>
-                      <input
-                        type="text"
-                        value={patientName}
-                        onChange={(e) => setPatientName(e.target.value)}
-                        className="w-full h-11 px-3 rounded-xl bg-surface-container-low text-on-surface font-title-sm focus:outline-none focus:ring-2 focus:ring-secondary border border-surface-container-high"
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block font-label-md text-label-md text-on-surface-variant mb-1">
-                      Registered Mobile Number
-                    </label>
-                    <input
-                      type="tel"
-                      value={patientPhone}
-                      onChange={(e) => setPatientPhone(e.target.value)}
-                      className="w-full h-11 px-3 rounded-xl bg-surface-container-low text-on-surface font-title-sm focus:outline-none focus:ring-2 focus:ring-secondary border border-surface-container-high"
-                      required
-                    />
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block font-label-md text-label-md text-on-surface-variant mb-1">
-                        Full Legal Name
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="First and Last Name"
-                        className="w-full h-11 px-3 rounded-xl bg-surface-container-low text-on-surface font-title-sm focus:outline-none focus:ring-2 focus:ring-secondary border border-surface-container-high"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block font-label-md text-label-md text-on-surface-variant mb-1">
-                        Date of Birth
-                      </label>
-                      <input
-                        type="date"
-                        className="w-full h-11 px-3 rounded-xl bg-surface-container-low text-on-surface font-title-sm focus:outline-none focus:ring-2 focus:ring-secondary border border-surface-container-high"
-                        required
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <div className="mt-4">
-                <label className="block font-label-md text-label-md text-on-surface-variant mb-1">
-                  Reason for Visit / Presenting Clinical Complaint
+              <div className="mb-4">
+                <label className="text-[12px] font-semibold text-[#4A5F4E] dark:text-[#A8D5B5] block mb-1.5">
+                  Reason for Visit / Symptoms
                 </label>
                 <textarea
+                  rows={3}
                   value={reasonForVisit}
                   onChange={(e) => setReasonForVisit(e.target.value)}
-                  rows={3}
-                  className="w-full p-3 rounded-xl bg-surface-container-low text-on-surface font-body-sm focus:outline-none focus:ring-2 focus:ring-secondary border border-surface-container-high resize-none"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-[#E2DDD6] dark:border-[#2E3E34] bg-[#FAFAF7] dark:bg-[#16201B] text-[13px] text-[#1A2E1A] dark:text-[#E8EDE8] outline-none focus:border-[#2D6A4F] resize-none"
                   placeholder="Describe your health concern, symptoms, or follow-up reason..."
                   required
                 />
               </div>
 
               {/* Consent Toggle */}
-              <div className="mt-4 pt-3 border-t border-surface-container-high flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-[20px] text-secondary">security</span>
+              <div className="mt-4 pt-3 border-t border-[#E2DDD6] dark:border-[#2E3E34] flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <span className="material-symbols-outlined text-[20px] text-[#2D6A4F]">lock</span>
                   <div>
-                    <span className="font-title-sm text-title-sm text-primary block">Consent for Clinical EHR Record Sync</span>
-                    <span className="text-[11px] text-on-surface-variant block">Allows attending specialist 72-hour access to clinical notes and vitals</span>
+                    <span className="text-[13px] font-bold text-[#1A2E1A] dark:text-[#E8EDE8] block">Health Record Privacy & Sync</span>
+                    <span className="text-[11px] text-[#6B7F6E] dark:text-[#B8CCBC] block">Allows your doctor to view previous clinical notes and lab results</span>
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => setVaultConsent(!vaultConsent)}
-                  className={`w-12 h-6 flex items-center rounded-full p-1 transition-colors ${
-                    vaultConsent ? 'bg-secondary' : 'bg-surface-variant'
+                  className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors ${
+                    vaultConsent ? 'bg-[#2D6A4F]' : 'bg-[#E2DDD6]'
                   }`}
                 >
                   <div
                     className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
-                      vaultConsent ? 'translate-x-6' : 'translate-x-0'
+                      vaultConsent ? 'translate-x-5' : 'translate-x-0'
                     }`}
                   />
                 </button>
@@ -409,83 +335,77 @@ export const AppointmentBookingPage: React.FC = () => {
           </div>
 
           {/* Right Panel: Live Booking Summary & Submission */}
-          <div className="lg:col-span-4 flex flex-col gap-space-md">
-            <div className="bg-surface-container-lowest rounded-2xl p-space-lg shadow-md border border-surface-container-high">
-              <h3 className="font-title-md text-title-md text-primary font-bold mb-4 pb-2 border-b border-surface-container-high">
-                Appointment Summary
+          <div className="lg:col-span-4 flex flex-col gap-4">
+            <div className="bg-[#FFFFFF] dark:bg-[#1A2420] rounded-2xl p-6 shadow-md border border-[#E2DDD6] dark:border-[#2E3E34]">
+              <h3 className="text-[16px] font-bold text-[#1A2E1A] dark:text-[#E8EDE8] mb-4 pb-2 border-b border-[#E2DDD6] dark:border-[#2E3E34]">
+                Booking Summary
               </h3>
 
               <div className="flex items-center gap-3 mb-4">
                 <img
                   src={doctor.avatarUrl}
                   alt={doctor.displayName}
-                  className="w-14 h-14 rounded-xl object-cover shrink-0"
+                  className="w-13 h-13 rounded-xl object-cover shrink-0"
                   onError={(e) => { (e.target as HTMLImageElement).src = '/consultation.png'; }}
                 />
                 <div>
-                  <h4 className="font-title-sm text-title-sm text-primary font-bold">{doctor.displayName}</h4>
-                  <span className="text-[12px] text-secondary font-semibold">{doctor.departmentName}</span>
-                  <span className="text-[11px] text-on-surface-variant block">{doctor.chamberRoom}</span>
+                  <h4 className="text-[14px] font-bold text-[#1A2E1A] dark:text-[#E8EDE8]">{doctor.displayName}</h4>
+                  <span className="text-[12px] text-[#2D6A4F] dark:text-[#74C69D] font-semibold">{doctor.departmentName}</span>
+                  <span className="text-[11px] text-[#6B7F6E] dark:text-[#B8CCBC] block">{doctor.chamberRoom}</span>
                 </div>
               </div>
 
-              <div className="space-y-2 py-3 border-y border-surface-container-high text-body-sm">
+              <div className="space-y-2 py-3 border-y border-[#E2DDD6] dark:border-[#2E3E34] text-[13px]">
                 <div className="flex justify-between">
-                  <span className="text-on-surface-variant">Consultation Slot:</span>
-                  <span className="font-bold text-primary">Today (Oct 24), 10:15 AM</span>
+                  <span className="text-[#6B7F6E] dark:text-[#B8CCBC]">Date & Time:</span>
+                  <span className="font-bold text-[#1A2E1A] dark:text-[#E8EDE8]">Today, 10:15 AM</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-on-surface-variant">Modality:</span>
-                  <span className="font-semibold text-primary">
-                    {consultationMode === 'IN_PERSON' ? 'In-Person OPD' : 'HD Tele-Consult'}
+                  <span className="text-[#6B7F6E] dark:text-[#B8CCBC]">Consultation Type:</span>
+                  <span className="font-semibold text-[#1A2E1A] dark:text-[#E8EDE8]">
+                    {consultationMode === 'IN_PERSON' ? 'In-Person Hospital Visit' : 'Video Consultation'}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-on-surface-variant">Patient UHID:</span>
-                  <span className="font-mono text-primary font-bold">{uhid}</span>
+                  <span className="text-[#6B7F6E] dark:text-[#B8CCBC]">Patient ID:</span>
+                  <span className="font-mono text-[#1A2E1A] dark:text-[#E8EDE8] font-semibold">{uhid}</span>
                 </div>
               </div>
 
               {/* Fee Breakdown */}
-              <div className="py-3 border-b border-surface-container-high space-y-1.5 text-body-sm">
-                <div className="flex justify-between text-on-surface-variant">
-                  <span>Consultant Fee:</span>
+              <div className="py-3 border-b border-[#E2DDD6] dark:border-[#2E3E34] space-y-1.5 text-[13px]">
+                <div className="flex justify-between text-[#6B7F6E] dark:text-[#B8CCBC]">
+                  <span>Consultation Fee:</span>
                   <span>₹1,000.00</span>
                 </div>
-                <div className="flex justify-between text-on-surface-variant">
-                  <span>Hospital Facility & Telemetry:</span>
+                <div className="flex justify-between text-[#6B7F6E] dark:text-[#B8CCBC]">
+                  <span>Hospital Care Services:</span>
                   <span>₹100.00</span>
                 </div>
-                <div className="flex justify-between text-on-surface-variant">
-                  <span>GST (5%):</span>
+                <div className="flex justify-between text-[#6B7F6E] dark:text-[#B8CCBC]">
+                  <span>Taxes (5%):</span>
                   <span>₹55.00</span>
                 </div>
-                <div className="flex justify-between text-title-md font-bold text-primary pt-2 border-t border-surface-container-high/60">
-                  <span>Total Amount:</span>
-                  <span>₹1,155.00</span>
+                <div className="flex justify-between text-[15px] font-bold text-[#1A2E1A] dark:text-[#E8EDE8] pt-2 border-t border-[#E2DDD6] dark:border-[#2E3E34]">
+                  <span>Total Due at Visit:</span>
+                  <span className="text-[#2D6A4F] dark:text-[#74C69D]">₹1,155.00</span>
                 </div>
-              </div>
-
-              {/* Idempotency Footer */}
-              <div className="mt-3 p-2.5 rounded-lg bg-surface-container-low text-[11px] text-on-surface-variant flex items-center justify-between">
-                <span>Idempotency Key:</span>
-                <span className="font-mono text-primary font-bold truncate max-w-[140px]">{idempotencyKey}</span>
               </div>
 
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full mt-4 py-3 rounded-xl bg-primary hover:bg-secondary text-white font-title-sm text-title-sm shadow-md transition-all flex items-center justify-center gap-2 active:scale-98 disabled:opacity-50"
+                className="w-full mt-5 py-3 rounded-xl bg-[#2D6A4F] hover:bg-[#1B4332] text-white font-semibold text-[14px] shadow-sm transition-all flex items-center justify-center gap-2 active:scale-98 disabled:opacity-50"
               >
                 {isSubmitting ? (
                   <>
                     <span className="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>
-                    <span>Reserving Slot in PostgreSQL...</span>
+                    <span>Confirming Appointment...</span>
                   </>
                 ) : (
                   <>
-                    <span className="material-symbols-outlined text-[18px]">verified</span>
-                    <span>Confirm & Complete Booking</span>
+                    <span className="material-symbols-outlined text-[18px]">check_circle</span>
+                    <span>Confirm Appointment</span>
                   </>
                 )}
               </button>

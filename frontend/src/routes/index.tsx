@@ -11,6 +11,8 @@ import { AppointmentBookingPage } from '../pages/AppointmentBookingPage';
 import { AppointmentConfirmationPage } from '../pages/AppointmentConfirmationPage';
 import { OperationsHubPage } from '../pages/OperationsHubPage';
 import { PatientPortalPage } from '../pages/PatientPortalPage';
+import { DashboardPage } from '../pages/DashboardPage';
+import { SystemDesignLabPage } from '../pages/SystemDesignLabPage';
 import { ShortLinkRedirectPage } from '../pages/ShortLinkRedirectPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
 import { LoginPage } from '../pages/LoginPage';
@@ -62,10 +64,11 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
         <Route path="/appointments/new" element={<AppointmentBookingPage />} />
         <Route path="/appointments/:appointmentId/confirmation" element={<AppointmentConfirmationPage />} />
         <Route path="/s/:code" element={<ShortLinkRedirectPage />} />
+        <Route path="/system-design-lab" element={<SystemDesignLabPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
 
-      {/* 2. Operations & Portal Workstation Routes inside PortalLayout */}
+      {/* 2. Staff Portal Routes inside PortalLayout */}
       <Route
         element={
           <PortalLayout
@@ -74,6 +77,8 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
           />
         }
       >
+        <Route path="/staff/dashboard" element={<DashboardPage />} />
+        <Route path="/staff/system-design-lab" element={<SystemDesignLabPage />} />
         <Route
           path="/staff/operations"
           element={

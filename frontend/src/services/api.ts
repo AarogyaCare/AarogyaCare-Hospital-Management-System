@@ -336,6 +336,10 @@ export const authService = {
     }
   },
 
+  async getCurrentUser(): Promise<UserProfile | null> {
+    return this.me();
+  },
+
   async logout(): Promise<void> {
     const token = this.getToken();
     if (token) {
@@ -358,18 +362,19 @@ export const pharmacyService = {
     if (search) url += `&search=${encodeURIComponent(search)}`;
     if (lowStockOnly) url += '&low_stock_only=true';
 
-    const backendData = await fetchFromBackend<{ items: any[]; total: number }>(url);
-    if (backendData && Array.isArray(backendData.items) && backendData.items.length > 0) {
-      const mapped: Medicine[] = backendData.items.map(m => ({
+    const backendData = await fetchFromBackend<any>(url);
+    const rawList = Array.isArray(backendData) ? backendData : (Array.isArray(backendData?.items) ? backendData.items : []);
+    if (rawList.length > 0) {
+      const mapped: Medicine[] = rawList.map((m: any) => ({
         id: m.id,
         catalogueCode: m.code,
         name: m.name,
-        genericName: m.generic_name || m.name,
+        genericName: m.brand_name || m.generic_name || m.name,
         dosageForm: m.dosage_form,
         unitPrice: m.unit_price,
-        stockQuantity: m.stock_quantity,
-        reorderThreshold: m.reorder_threshold,
-        isLowStock: m.is_low_stock
+        stockQuantity: m.current_stock ?? m.stock_quantity ?? 0,
+        reorderThreshold: m.minimum_threshold ?? m.reorder_threshold ?? 50,
+        isLowStock: m.is_low_stock ?? ((m.current_stock ?? m.stock_quantity ?? 0) <= (m.minimum_threshold ?? m.reorder_threshold ?? 50))
       }));
       return { data: mapped, isLiveDatabase: true };
     }
@@ -513,26 +518,31 @@ export const appointmentService = {
         });
         if (res.ok) {
           const data = await res.json();
-          if (Array.isArray(data.items) && data.items.length > 0) {
-            return data.items.map((item: any) => ({
-              id: item.id,
-              appointmentNumber: item.appointment_number,
-              patientId: item.patient_id,
-              patientName: item.patient_name || 'Patient',
-              patientUhid: item.patient_uhid || 'AC-2024-XXXX',
-              doctorId: item.doctor_id,
-              doctorName: item.doctor_name,
-              doctorChamber: item.doctor_chamber || 'Consultation Suite',
-              departmentName: item.department_name || 'Clinical Care',
-              slotId: item.slot_id,
-              slotTime: item.slot_time ? new Date(item.slot_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '10:15 AM',
-              slotDate: item.slot_time ? new Date(item.slot_time).toLocaleDateString([], { month: 'short', day: 'numeric' }) : 'Today',
-              consultationMode: item.consultation_mode,
-              status: item.status,
-              shortLinkCode: 'c9f2k1',
-              reasonForVisit: item.reason_for_visit,
-              createdAt: item.created_at
-            }));
+          const raw = Array.isArray(data) ? data : (Array.isArray(data.items) ? data.items : []);
+          if (raw.length > 0) {
+            return raw.map((item: any) => {
+              const timeVal = item.slot_start || item.slot_time;
+              const dateObj = timeVal ? new Date(timeVal) : null;
+              return {
+                id: item.id,
+                appointmentNumber: item.appointment_number || `AC-APT-${item.id?.substring(0, 5)}`,
+                patientId: item.patient_id,
+                patientName: item.patient_name || 'Patient',
+                patientUhid: item.patient_uhid || 'AC-2024-9104',
+                doctorId: item.doctor_id,
+                doctorName: item.doctor_name || 'Doctor In-Charge',
+                doctorChamber: item.doctor_chamber || 'Consultation Suite 04',
+                departmentName: item.department_name || 'Clinical Care',
+                slotId: item.slot_id,
+                slotTime: (dateObj && !isNaN(dateObj.getTime())) ? dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '10:15 AM',
+                slotDate: (dateObj && !isNaN(dateObj.getTime())) ? dateObj.toLocaleDateString([], { month: 'short', day: 'numeric' }) : 'Today',
+                consultationMode: item.consultation_mode || 'IN_PERSON',
+                status: item.status || 'CONFIRMED',
+                shortLinkCode: 'c9f2k1',
+                reasonForVisit: item.reason_for_visit || 'Consultation',
+                createdAt: item.created_at || new Date().toISOString()
+              };
+            });
           }
         }
       } catch {
@@ -979,14 +989,14 @@ export const emergencyService = {
           if (Array.isArray(list) && list.length > 0) {
             return list.map((e: any) => ({
               id: e.id,
-              requestNumber: e.request_number,
+              requestNumber: `EM-${(e.id || '').substring(0, 4).toUpperCase()}`,
               patientName: e.patient_name,
-              patientPhone: e.patient_phone || '+91 99999 00000',
-              symptoms: e.symptoms,
-              priority: e.priority as any,
-              status: e.status as any,
-              assignedRoom: e.assigned_room || (e.priority === 'ESI-1_STAT' ? 'Resus Bay 01' : 'Triage Bay 02'),
-              assignedDoctor: e.assigned_doctor || 'Dr. Emergency Staff In-Charge',
+              patientPhone: e.contact_number || '+91 99999 00000',
+              symptoms: e.chief_complaint,
+              priority: (e.triage_level === 'RED' ? 'ESI-1_STAT' : e.triage_level === 'YELLOW' ? 'ESI-3_URGENT' : 'ESI-4_LESS_URGENT') as any,
+              status: (e.status === 'INCOMING' ? 'TRIAGE_RECEIVED' : e.status) as any,
+              assignedRoom: e.triage_level === 'RED' ? 'Resus Bay 01' : 'Triage Bay 02',
+              assignedDoctor: 'Dr. Emergency Staff In-Charge',
               waitTime: '<2 mins',
               createdAt: e.created_at ? new Date(e.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'
             }));
@@ -1009,29 +1019,32 @@ export const emergencyService = {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
+    const triageLevel = (req.priority === 'ESI-1_STAT' || req.priority === 'ESI-2_EMERGENT') ? 'RED' : (req.priority === 'ESI-3_URGENT' ? 'YELLOW' : 'GREEN');
+
     try {
       const res = await fetch(`${API_BASE_URL}/api/v1/emergency/requests`, {
         method: 'POST',
         headers,
         body: JSON.stringify({
           patient_name: req.patientName || 'Trauma Patient',
-          patient_phone: req.patientPhone || '+91 99999 00000',
-          symptoms: req.symptoms || 'Acute clinical incident',
-          priority: req.priority || 'ESI-1_STAT'
+          contact_number: req.patientPhone || '+91 99999 00000',
+          chief_complaint: req.symptoms || 'Acute clinical incident',
+          triage_level: triageLevel,
+          vital_signs: 'BP 120/80, Pulse 78'
         })
       });
       if (res.ok) {
         const data = await res.json();
         return {
           id: data.id,
-          requestNumber: data.request_number,
+          requestNumber: `EM-${data.id.substring(0, 4).toUpperCase()}`,
           patientName: data.patient_name,
-          patientPhone: data.patient_phone || '+91 99999 00000',
-          symptoms: data.symptoms,
-          priority: data.priority as any,
-          status: data.status as any,
-          assignedRoom: data.assigned_room || (data.priority === 'ESI-1_STAT' ? 'Resus Bay 01' : 'Triage Bay 04'),
-          assignedDoctor: data.assigned_doctor || 'Dr. Emergency Duty In-Charge',
+          patientPhone: data.contact_number || '+91 99999 00000',
+          symptoms: data.chief_complaint,
+          priority: req.priority || 'ESI-1_STAT',
+          status: 'TRIAGE_RECEIVED',
+          assignedRoom: triageLevel === 'RED' ? 'Resus Bay 01' : 'Triage Bay 04',
+          assignedDoctor: 'Dr. Emergency Duty In-Charge',
           waitTime: '<2 mins',
           createdAt: 'Just now'
         };
@@ -1169,6 +1182,16 @@ export const shortLinkService = {
     });
     if (!res.ok) throw new Error('Failed to revoke short link');
     return await res.json();
+  },
+  async createShortLink(targetUrl: string): Promise<any> {
+    return this.create({
+      resource_type: 'REPORT',
+      resource_id: 'rep-' + Date.now(),
+      destination_path: targetUrl
+    });
+  },
+  async resolveShortLink(code: string): Promise<any> {
+    return this.resolve(code);
   }
 };
 
@@ -1209,6 +1232,7 @@ export const systemDesignService = {
     } catch {}
     return null;
   },
+
   async benchmarkIds(sampleSize: number = 20000): Promise<any> {
     try {
       const res = await fetch(`${API_BASE_URL}/api/v1/system-design/ids/benchmark?sample_size=${sampleSize}`, {
@@ -1217,6 +1241,76 @@ export const systemDesignService = {
       if (res.ok) return await res.json();
     } catch {}
     return null;
+  },
+
+  async getRateLimiterMetrics(): Promise<any> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/system-design/ratelimiter/metrics`);
+      if (res.ok) return await res.json();
+    } catch {}
+    return null;
+  },
+
+  async getHashRingNodes(): Promise<any> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/system-design/hashring/nodes`);
+      if (res.ok) return await res.json();
+    } catch {}
+    return null;
+  },
+
+  async addHashRingNode(name: string): Promise<any> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/system-design/hashring/nodes?name=${encodeURIComponent(name)}`, {
+        method: 'POST'
+      });
+      if (res.ok) return await res.json();
+    } catch {}
+    return null;
+  },
+
+  async removeHashRingNode(name: string): Promise<any> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/system-design/hashring/nodes/${encodeURIComponent(name)}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) return await res.json();
+    } catch {}
+    return null;
+  },
+
+  async routeHashRingKey(key: string): Promise<any> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/system-design/hashring/route?key=${encodeURIComponent(key)}`);
+      if (res.ok) return await res.json();
+    } catch {}
+    return null;
+  },
+
+  async simulateHashRing(nodeToRemove: string = 'redis-cache-c', sampleKeyCount: number = 1000): Promise<any> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/system-design/hashring/simulate?nodeToRemove=${encodeURIComponent(nodeToRemove)}&sampleKeyCount=${sampleKeyCount}`, {
+        method: 'POST'
+      });
+      if (res.ok) return await res.json();
+    } catch {}
+    return null;
+  },
+
+  async rebuildAutocomplete(): Promise<any> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/autocomplete/rebuild`, { method: 'POST' });
+      if (res.ok) return await res.json();
+    } catch {}
+    return null;
+  },
+
+  async routeHashKey(key: string): Promise<any> {
+    return this.routeHashRingKey(key);
+  },
+
+  async simulateRebalance(node: string): Promise<any> {
+    return this.simulateHashRing(node);
   }
 };
 
