@@ -31,7 +31,9 @@ public class DoctorController {
     }
 
     @GetMapping("/{id}/slots")
-    public ResponseEntity<List<Map<String, Object>>> getDoctorSlots(@PathVariable String id) {
-        return ResponseEntity.ok(doctorService.getSlotsByDoctor(id));
+    public ResponseEntity<List<Map<String, Object>>> getDoctorSlots(
+            @PathVariable String id,
+            @RequestParam(required = false) String date) {
+        return ResponseEntity.ok(doctorService.getSlotsByDoctor(id, date));
     }
 }

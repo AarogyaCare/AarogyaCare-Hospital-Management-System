@@ -26,6 +26,7 @@ public class EmergencyController {
     }
 
     @GetMapping("/requests")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('NURSE', 'DOCTOR', 'ADMIN')")
     public ResponseEntity<List<EmergencyDtos.EmergencyResponse>> getEmergencyQueue(
             @RequestParam(required = false) String status) {
         return ResponseEntity.ok(emergencyService.getEmergencyQueue(status));

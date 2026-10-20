@@ -24,14 +24,33 @@ public class PatientController {
     private final PatientRecordService recordService;
     private final BillingService billingService;
     private final PatientRepository patientRepository;
+    private final com.aarogya.service.LabService labService;
 
     public PatientController(
             PatientRecordService recordService,
             BillingService billingService,
-            PatientRepository patientRepository) {
+            PatientRepository patientRepository,
+            com.aarogya.service.LabService labService) {
         this.recordService = recordService;
         this.billingService = billingService;
         this.patientRepository = patientRepository;
+        this.labService = labService;
+    }
+
+    @GetMapping
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('DOCTOR', 'NURSE', 'RECEPTIONIST', 'BILLING_STAFF', 'ADMIN')")
+    public ResponseEntity<List<com.aarogya.dto.PatientDtos.PatientResponse>> searchPatients(
+            @RequestParam(required = false) String search) {
+        return ResponseEntity.ok(recordService.searchPatients(search));
+    }
+
+    @PostMapping
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('RECEPTIONIST', 'DOCTOR', 'NURSE', 'ADMIN')")
+    public ResponseEntity<com.aarogya.dto.PatientDtos.PatientResponse> registerPatient(
+            @jakarta.validation.Valid @RequestBody com.aarogya.dto.PatientDtos.CreatePatientRequest request,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseEntity.status(org.springframework.http.HttpStatus.CREATED)
+                .body(recordService.registerPatient(request, principal));
     }
 
     @GetMapping("/me")
@@ -39,6 +58,35 @@ public class PatientController {
             @AuthenticationPrincipal UserPrincipal principal) {
         String patientId = resolveSelfPatientId(principal);
         return ResponseEntity.ok(recordService.getRecordsByPatient(patientId));
+    }
+
+    @GetMapping("/me/prescriptions")
+    public ResponseEntity<List<PrescriptionDtos.PrescriptionResponse>> getMyPrescriptions(
+            @AuthenticationPrincipal UserPrincipal principal) {
+        String patientId = resolveSelfPatientId(principal);
+        return ResponseEntity.ok(recordService.getPrescriptionsByPatient(patientId));
+    }
+
+    @GetMapping("/me/invoices")
+    public ResponseEntity<List<BillingDtos.InvoiceResponse>> getMyInvoices(
+            @AuthenticationPrincipal UserPrincipal principal) {
+        String patientId = resolveSelfPatientId(principal);
+        return ResponseEntity.ok(billingService.getInvoicesByPatient(patientId));
+    }
+
+    @GetMapping("/me/lab-orders")
+    public ResponseEntity<List<com.aarogya.dto.LabDtos.LabOrderResponse>> getMyLabOrders(
+            @AuthenticationPrincipal UserPrincipal principal) {
+        String patientId = resolveSelfPatientId(principal);
+        return ResponseEntity.ok(labService.getOrdersByPatient(patientId, principal));
+    }
+
+    @GetMapping("/{id}")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('DOCTOR', 'NURSE', 'RECEPTIONIST', 'BILLING_STAFF', 'ADMIN', 'PATIENT')")
+    public ResponseEntity<com.aarogya.dto.PatientDtos.PatientResponse> getPatientById(
+            @PathVariable String id,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseEntity.ok(recordService.getPatientProfile(id));
     }
 
     @GetMapping("/{id}/records")
@@ -63,6 +111,14 @@ public class PatientController {
             @AuthenticationPrincipal UserPrincipal principal) {
         assertCanAccessPatientInvoices(id, principal);
         return ResponseEntity.ok(billingService.getInvoicesByPatient(id));
+    }
+
+    @GetMapping("/{id}/lab-orders")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('DOCTOR', 'NURSE', 'ADMIN', 'PATIENT')")
+    public ResponseEntity<List<com.aarogya.dto.LabDtos.LabOrderResponse>> getPatientLabOrders(
+            @PathVariable String id,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseEntity.ok(labService.getOrdersByPatient(id, principal));
     }
 
     private String resolveSelfPatientId(UserPrincipal principal) {

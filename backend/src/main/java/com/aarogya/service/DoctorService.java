@@ -6,6 +6,7 @@ import com.aarogya.model.DoctorDocument;
 import com.aarogya.model.DoctorSlotDocument;
 import com.aarogya.model.UserDocument;
 import com.aarogya.repository.DepartmentRepository;
+import com.aarogya.repository.AppointmentRepository;
 import com.aarogya.repository.DoctorRepository;
 import com.aarogya.repository.DoctorSlotRepository;
 import com.aarogya.repository.UserRepository;
@@ -20,16 +21,19 @@ public class DoctorService {
     private final DoctorSlotRepository slotRepository;
     private final UserRepository userRepository;
     private final DepartmentRepository departmentRepository;
+    private final AppointmentRepository appointmentRepository;
 
     public DoctorService(
             DoctorRepository doctorRepository,
             DoctorSlotRepository slotRepository,
             UserRepository userRepository,
-            DepartmentRepository departmentRepository) {
+            DepartmentRepository departmentRepository,
+            AppointmentRepository appointmentRepository) {
         this.doctorRepository = doctorRepository;
         this.slotRepository = slotRepository;
         this.userRepository = userRepository;
         this.departmentRepository = departmentRepository;
+        this.appointmentRepository = appointmentRepository;
     }
 
     public Map<String, Object> getAllDoctors(String departmentId, String search, int limit) {
@@ -103,16 +107,23 @@ public class DoctorService {
         return map;
     }
 
-    public List<Map<String, Object>> getSlotsByDoctor(String doctorId) {
+    public List<Map<String, Object>> getSlotsByDoctor(String doctorId, String appointmentDate) {
         List<DoctorSlotDocument> slots = slotRepository.findByDoctorId(doctorId);
         List<Map<String, Object>> result = new ArrayList<>();
         for (DoctorSlotDocument s : slots) {
+            String status = s.getStatus();
+            if ("BLOCKED".equalsIgnoreCase(status) || "CANCELLED".equalsIgnoreCase(status)) continue;
+            if (appointmentDate != null && !appointmentDate.isBlank()) {
+                status = appointmentRepository.existsByDoctorIdAndSlotIdAndAppointmentDateAndStatusNot(doctorId, s.getId(), appointmentDate, "CANCELLED")
+                        ? "BOOKED"
+                        : "AVAILABLE";
+            }
             Map<String, Object> m = new HashMap<>();
             m.put("id", s.getId());
             m.put("doctor_id", s.getDoctorId());
             m.put("slot_start", s.getSlotStart());
             m.put("slot_end", s.getSlotEnd());
-            m.put("status", s.getStatus());
+            m.put("status", status);
             m.put("room_number", s.getRoomNumber());
             result.add(m);
         }

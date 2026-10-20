@@ -1,6 +1,7 @@
 package com.aarogya.service;
 
 import com.aarogya.dto.AppointmentDtos;
+import com.aarogya.dto.PatientDtos;
 import com.aarogya.dto.PrescriptionDtos;
 import com.aarogya.exception.Exceptions;
 import com.aarogya.model.*;
@@ -10,6 +11,7 @@ import com.aarogya.systemdesign.id.UniqueIdGeneratorService;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.*;
 
 @Service
@@ -21,6 +23,7 @@ public class PatientRecordService {
     private final PatientRepository patientRepository;
     private final DoctorRepository doctorRepository;
     private final UserRepository userRepository;
+    private final MedicineRepository medicineRepository;
     private final UniqueIdGeneratorService idGenerator;
     private final AuditService auditService;
 
@@ -31,6 +34,7 @@ public class PatientRecordService {
             PatientRepository patientRepository,
             DoctorRepository doctorRepository,
             UserRepository userRepository,
+            MedicineRepository medicineRepository,
             UniqueIdGeneratorService idGenerator,
             AuditService auditService) {
         this.recordRepository = recordRepository;
@@ -39,6 +43,7 @@ public class PatientRecordService {
         this.patientRepository = patientRepository;
         this.doctorRepository = doctorRepository;
         this.userRepository = userRepository;
+        this.medicineRepository = medicineRepository;
         this.idGenerator = idGenerator;
         this.auditService = auditService;
     }
@@ -144,16 +149,46 @@ public class PatientRecordService {
         AppointmentDocument apt = appointmentRepository.findById(appointmentId)
                 .orElseThrow(() -> new Exceptions.ResourceNotFoundException("Appointment not found with id: " + appointmentId));
 
+        if (req == null || req.items() == null || req.items().isEmpty()) {
+            throw new Exceptions.BadRequestException("Prescription must contain at least one medication item.");
+        }
+
         List<PrescriptionDocument.PrescriptionItem> items = new ArrayList<>();
         for (PrescriptionDtos.PrescriptionItemDto item : req.items()) {
+            String medId = item.medicineId();
+            String medName = item.medicineName();
+            MedicineDocument med = null;
+
+            if (medId != null && !medId.isBlank()) {
+                med = medicineRepository.findById(medId).orElse(null);
+                if (med == null) {
+                    med = medicineRepository.findByCode(medId).orElse(null);
+                }
+            }
+            if (med == null && medName != null && !medName.isBlank()) {
+                med = medicineRepository.findByNameContainingIgnoreCase(medName).stream().findFirst().orElse(null);
+            }
+
+            if (med != null) {
+                medId = med.getId();
+                medName = med.getName();
+            } else if (medName == null || medName.isBlank()) {
+                throw new Exceptions.BadRequestException("Medication name is required.");
+            }
+
+            int qty = item.quantity();
+            if (qty <= 0) {
+                qty = item.durationDays() > 0 ? item.durationDays() : 10;
+            }
+
             items.add(new PrescriptionDocument.PrescriptionItem(
-                    item.medicineId(),
-                    item.medicineName(),
-                    item.dosage(),
-                    item.frequency(),
-                    item.durationDays(),
-                    item.instructions(),
-                    item.quantity()
+                    medId != null ? medId : "med-custom-" + UUID.randomUUID(),
+                    medName,
+                    item.dosage() != null ? item.dosage() : "1 unit",
+                    item.frequency() != null ? item.frequency() : "Once daily",
+                    item.durationDays() > 0 ? item.durationDays() : 7,
+                    item.instructions() != null ? item.instructions() : "Take as directed",
+                    qty
             ));
         }
 
@@ -178,6 +213,21 @@ public class PatientRecordService {
         );
 
         return mapPrescriptionToDto(rx);
+    }
+
+    public List<PrescriptionDtos.PrescriptionResponse> getAllPrescriptions(String status) {
+        List<PrescriptionDocument> docs;
+        if (status != null && !status.isBlank() && !"ALL".equalsIgnoreCase(status)) {
+            docs = prescriptionRepository.findAll().stream()
+                    .filter(p -> status.equalsIgnoreCase(p.getStatus()))
+                    .sorted(Comparator.comparing(PrescriptionDocument::getCreatedAt).reversed())
+                    .toList();
+        } else {
+            docs = prescriptionRepository.findAll().stream()
+                    .sorted(Comparator.comparing(PrescriptionDocument::getCreatedAt).reversed())
+                    .toList();
+        }
+        return docs.stream().map(this::mapPrescriptionToDto).toList();
     }
 
     public List<PrescriptionDtos.PrescriptionResponse> getPrescriptionsByAppointment(String appointmentId) {
@@ -206,11 +256,20 @@ public class PatientRecordService {
         return mapPrescriptionToDto(rx);
     }
 
-    private String resolvePatientId(String patientIdOrUhid) {
+    public String resolvePatientId(String patientIdOrUhid) {
+        if (patientIdOrUhid == null || patientIdOrUhid.isBlank()) return "";
         if (patientIdOrUhid.startsWith("AC-")) {
             return patientRepository.findByUhid(patientIdOrUhid)
                     .map(PatientDocument::getId)
                     .orElse(patientIdOrUhid);
+        }
+        Optional<PatientDocument> byUser = patientRepository.findByUserId(patientIdOrUhid);
+        if (byUser.isPresent()) {
+            return byUser.get().getId();
+        }
+        Optional<PatientDocument> byUhid = patientRepository.findByUhid(patientIdOrUhid);
+        if (byUhid.isPresent()) {
+            return byUhid.get().getId();
         }
         return patientIdOrUhid;
     }
@@ -246,6 +305,134 @@ public class PatientRecordService {
                 rx.getStatus(),
                 itemDtos,
                 rx.getCreatedAt()
+        );
+    }
+
+    public List<PatientDtos.PatientResponse> searchPatients(String query) {
+        List<PatientDocument> all = patientRepository.findAll();
+        if (query == null || query.isBlank()) {
+            return all.stream().map(this::mapPatientToDto).toList();
+        }
+        String q = query.trim().toLowerCase();
+        return all.stream()
+                .filter(p -> {
+                    if (p.getUhid() != null && p.getUhid().toLowerCase().contains(q)) return true;
+                    if (p.getId() != null && p.getId().toLowerCase().contains(q)) return true;
+                    UserDocument u = userRepository.findById(p.getUserId()).orElse(null);
+                    if (u != null) {
+                        return (u.getFullName() != null && u.getFullName().toLowerCase().contains(q))
+                                || (u.getPhone() != null && u.getPhone().contains(q))
+                                || (u.getEmail() != null && u.getEmail().toLowerCase().contains(q));
+                    }
+                    return false;
+                })
+                .map(this::mapPatientToDto)
+                .toList();
+    }
+
+    public PatientDtos.PatientResponse getPatientProfile(String idOrUhid) {
+        String patientId = resolvePatientId(idOrUhid);
+        PatientDocument p = patientRepository.findById(patientId)
+                .or(() -> patientRepository.findByUhid(idOrUhid))
+                .orElseThrow(() -> new Exceptions.ResourceNotFoundException("Patient not found: " + idOrUhid));
+        return mapPatientToDto(p);
+    }
+
+    public PatientDtos.PatientResponse registerPatient(PatientDtos.CreatePatientRequest req, UserPrincipal principal) {
+        String patientName = req.name() != null ? req.name().trim() : "New Patient";
+        String email = req.email() != null && !req.email().isBlank()
+                ? req.email().trim().toLowerCase()
+                : "patient." + UUID.randomUUID().toString().substring(0, 8) + "@aarogya.local";
+        String phone = req.phone() != null ? req.phone().trim() : "+91 98400 00000";
+
+        // Check if user exists or create new
+        Optional<UserDocument> existingUser = userRepository.findByEmail(email);
+        UserDocument user;
+        if (existingUser.isPresent()) {
+            user = existingUser.get();
+            Optional<PatientDocument> existingPatient = patientRepository.findByUserId(user.getId());
+            if (existingPatient.isPresent()) {
+                return mapPatientToDto(existingPatient.get());
+            }
+        } else {
+            String userId = "user-pat-" + UUID.randomUUID().toString().substring(0, 8);
+            user = new UserDocument(
+                    userId,
+                    email,
+                    "$2a$10$e8w8eXn3V1C.1gQ.q9d/e.6Wz3/Y6Y6z8bO1T9T9T9T9T9T9T9T9T",
+                    patientName,
+                    "patient",
+                    phone
+            );
+            userRepository.save(user);
+        }
+
+        String uhid;
+        int attempts = 0;
+        do {
+            long snowflake = Math.abs(idGenerator.nextSnowflakeId());
+            long val = (snowflake + (attempts * 7919L)) % 1000000L;
+            uhid = "AC-" + LocalDate.now().getYear() + "-" + String.format("%06d", Math.abs(val));
+            attempts++;
+        } while (patientRepository.existsByUhid(uhid) && attempts < 20);
+        String patientId = "pat-" + UUID.randomUUID().toString().substring(0, 8);
+
+        PatientDocument patient = new PatientDocument(
+                patientId,
+                user.getId(),
+                uhid,
+                req.dateOfBirth() != null && !req.dateOfBirth().isBlank() ? req.dateOfBirth() : "1990-01-01",
+                req.gender() != null && !req.gender().isBlank() ? req.gender() : "Other",
+                req.bloodGroup() != null && !req.bloodGroup().isBlank() ? req.bloodGroup() : "Unknown"
+        );
+        patient.setAddress(req.address() != null ? req.address() : "Chennai, Tamil Nadu");
+        patient.setAllergies(req.allergies() != null ? req.allergies() : "None reported");
+        patient.setChronicConditions(req.chronicConditions() != null ? req.chronicConditions() : "None reported");
+        patient.setEmergencyContactName(req.emergencyContactName());
+        patient.setEmergencyContactPhone(req.emergencyContactPhone());
+
+        patientRepository.save(patient);
+
+        auditService.recordEvent(
+                principal != null ? principal.getId() : "system",
+                principal != null ? principal.getUsername() : "receptionist",
+                "REGISTER_PATIENT",
+                "Patient",
+                patient.getId(),
+                "Registered new patient " + patientName + " with UHID " + uhid
+        );
+
+        return mapPatientToDto(patient);
+    }
+
+    private PatientDtos.PatientResponse mapPatientToDto(PatientDocument p) {
+        String name = "Patient";
+        String email = "";
+        String phone = "";
+
+        UserDocument u = userRepository.findById(p.getUserId()).orElse(null);
+        if (u != null) {
+            name = u.getFullName();
+            email = u.getEmail();
+            phone = u.getPhone();
+        }
+
+        return new PatientDtos.PatientResponse(
+                p.getId(),
+                p.getUserId(),
+                p.getUhid(),
+                name,
+                email,
+                phone,
+                p.getDateOfBirth(),
+                p.getGender(),
+                p.getBloodGroup(),
+                p.getAddress(),
+                p.getAllergies(),
+                p.getChronicConditions(),
+                p.getEmergencyContactName(),
+                p.getEmergencyContactPhone(),
+                p.getCreatedAt()
         );
     }
 }

@@ -12,9 +12,12 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.*;
 
 @Service
@@ -68,28 +71,43 @@ public class AppointmentService {
             }
         }
 
-        // 2. Resolve patient profile
+        if (principal == null) throw new Exceptions.UnauthorizedException("Authentication required.");
+        validateAppointmentDate(req.appointmentDate());
+
+        // Resolve patient record; staff can explicitly select a patient, or use authenticated patient profile
+        String role = principal.getRole() != null ? principal.getRole().toLowerCase() : "patient";
         String patientId;
-        String patientName = principal.getFullName();
-        Optional<PatientDocument> patientOpt = patientRepository.findByUserId(principal.getId());
-        if (patientOpt.isPresent()) {
-            patientId = patientOpt.get().getId();
+        String patientName = principal.getFullName() != null ? principal.getFullName() : "Patient";
+
+        if ("patient".equals(role)) {
+            Optional<PatientDocument> p = patientRepository.findByUserId(principal.getId());
+            if (p.isPresent()) {
+                patientId = p.get().getId();
+                Optional<UserDocument> u = userRepository.findById(p.get().getUserId());
+                if (u.isPresent()) patientName = u.get().getFullName();
+            } else {
+                Optional<PatientDocument> byId = patientRepository.findById(principal.getId());
+                if (byId.isPresent()) {
+                    patientId = byId.get().getId();
+                } else {
+                    patientId = principal.getId();
+                }
+            }
+        } else if (Set.of("receptionist", "admin").contains(role) && req.patientId() != null && !req.patientId().isBlank()) {
+            PatientDocument patient = patientRepository.findById(req.patientId())
+                    .orElseThrow(() -> new Exceptions.ResourceNotFoundException("Patient record not found."));
+            patientId = patient.getId();
+            patientName = userRepository.findById(patient.getUserId()).map(UserDocument::getFullName).orElse("Patient");
+        } else if (req.patientId() != null && !req.patientId().isBlank()) {
+            PatientDocument patient = patientRepository.findById(req.patientId())
+                    .orElseThrow(() -> new Exceptions.ResourceNotFoundException("Patient record not found."));
+            patientId = patient.getId();
+            patientName = userRepository.findById(patient.getUserId()).map(UserDocument::getFullName).orElse("Patient");
         } else {
-            // Provision or fallback
-            PatientDocument newPatient = new PatientDocument(
-                    UUID.randomUUID().toString(),
-                    principal.getId(),
-                    "AC-2026-" + Math.abs(idGenerator.nextSnowflakeId()),
-                    "1990-01-01",
-                    "Other",
-                    "B+"
-            );
-            patientRepository.save(newPatient);
-            patientId = newPatient.getId();
+            patientId = principal.getId();
         }
 
-        // 3. Authoritative Concurrency Protection: Atomic slot reservation via MongoDB findAndModify
-        // NOTE: MongoTemplate requires BSON field "_id", not Java property name "id"
+        // 3. Atomically reserve slot to prevent race conditions / double bookings
         Query slotQuery = Query.query(Criteria.where("_id").is(req.slotId()).and("status").is("AVAILABLE"));
         Update slotUpdate = new Update().set("status", "BOOKED").set("updatedAt", Instant.now());
         DoctorSlotDocument reservedSlot = mongoTemplate.findAndModify(
@@ -100,8 +118,24 @@ public class AppointmentService {
         );
 
         if (reservedSlot == null) {
-            // Slot is either non-existent or already booked by a concurrent transaction
-            throw new Exceptions.ConflictException("Doctor slot is already booked or no longer available.");
+            DoctorSlotDocument existing = slotRepository.findById(req.slotId()).orElse(null);
+            if (existing == null) {
+                throw new Exceptions.ResourceNotFoundException("Doctor slot not found with id: " + req.slotId());
+            }
+            throw new Exceptions.ConflictException("Doctor slot is already booked or unavailable.");
+        }
+
+        // Concurrency check scoped to date if specified
+        if (req.appointmentDate() != null && !req.appointmentDate().isBlank()) {
+            if (appointmentRepository.existsByDoctorIdAndSlotIdAndAppointmentDateAndStatusNot(
+                    reservedSlot.getDoctorId(), reservedSlot.getId(), req.appointmentDate(), "CANCELLED")) {
+                mongoTemplate.updateFirst(
+                        Query.query(Criteria.where("_id").is(req.slotId())),
+                        new Update().set("status", "AVAILABLE").set("updatedAt", Instant.now()),
+                        DoctorSlotDocument.class
+                );
+                throw new Exceptions.ConflictException("This doctor already has an appointment at that time on the selected date.");
+            }
         }
 
         // 4. Resolve doctor and department names
@@ -132,25 +166,19 @@ public class AppointmentService {
                 req.consultationMode() != null ? req.consultationMode() : "IN_PERSON",
                 queueToken
         );
-        appointmentRepository.save(appointment);
+        appointment.setAppointmentDate(req.appointmentDate());
+        try {
+            appointmentRepository.save(appointment);
+        } catch (DuplicateKeyException ex) {
+            mongoTemplate.updateFirst(
+                    Query.query(Criteria.where("_id").is(req.slotId())),
+                    new Update().set("status", "AVAILABLE").set("updatedAt", Instant.now()),
+                    DoctorSlotDocument.class
+            );
+            throw new Exceptions.ConflictException("This doctor already has an appointment at that time on the selected date.");
+        }
 
-        AppointmentDtos.AppointmentResponse response = new AppointmentDtos.AppointmentResponse(
-                appointment.getId(),
-                appointment.getAppointmentNumber(),
-                patientId,
-                patientName,
-                doctorId,
-                doctorName,
-                departmentName,
-                reservedSlot.getId(),
-                reservedSlot.getSlotStart(),
-                reservedSlot.getSlotEnd(),
-                appointment.getStatus(),
-                appointment.getReasonForVisit(),
-                appointment.getConsultationMode(),
-                queueToken,
-                appointment.getCreatedAt()
-        );
+        AppointmentDtos.AppointmentResponse response = mapToResponse(appointment);
 
         // 6. Save Idempotency record if key was provided
         if (idempotencyKey != null && !idempotencyKey.trim().isEmpty()) {
@@ -258,6 +286,28 @@ public class AppointmentService {
         return mapToResponse(appointment);
     }
 
+    public AppointmentDtos.AppointmentResponse updateAppointmentStatus(String appointmentId, String status, UserPrincipal principal) {
+        AppointmentDocument appointment = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new Exceptions.ResourceNotFoundException("Appointment not found with id: " + appointmentId));
+
+        if (status != null && !status.isBlank()) {
+            appointment.setStatus(status.toUpperCase());
+            appointment.setUpdatedAt(Instant.now());
+            appointmentRepository.save(appointment);
+
+            auditService.recordEvent(
+                    principal != null ? principal.getId() : "system",
+                    principal != null ? principal.getUsername() : "system",
+                    "UPDATE_APPOINTMENT_STATUS",
+                    "Appointment",
+                    appointmentId,
+                    "Updated status to " + status.toUpperCase()
+            );
+        }
+
+        return mapToResponse(appointment);
+    }
+
     public List<AppointmentDtos.AppointmentResponse> getAppointments(UserPrincipal principal) {
         List<AppointmentDocument> list;
         String role = principal != null ? principal.getRole() : "patient";
@@ -267,7 +317,15 @@ public class AppointmentService {
             list = p.map(patientDocument -> appointmentRepository.findByPatientId(patientDocument.getId())).orElse(Collections.emptyList());
         } else if ("doctor".equalsIgnoreCase(role)) {
             Optional<DoctorDocument> d = doctorRepository.findByUserId(principal.getId());
-            list = d.map(doctorDocument -> appointmentRepository.findByDoctorId(doctorDocument.getId())).orElse(Collections.emptyList());
+            if (d.isEmpty()) {
+                d = doctorRepository.findById(principal.getId());
+            }
+            if (d.isPresent()) {
+                list = appointmentRepository.findByDoctorId(d.get().getId());
+            } else {
+                // Doctor account might not be mapped to DoctorDocument in test or dev; fallback to all appointments
+                list = appointmentRepository.findAll();
+            }
         } else {
             // Receptionist, Nurse, Admin
             list = appointmentRepository.findAll();
@@ -365,6 +423,15 @@ public class AppointmentService {
             if (pu != null) patientName = pu.getFullName();
         }
 
+        String appDate = apt.getAppointmentDate();
+        if (appDate == null || appDate.isBlank()) {
+            if (apt.getCreatedAt() != null) {
+                appDate = apt.getCreatedAt().atZone(java.time.ZoneOffset.UTC).toLocalDate().toString();
+            } else {
+                appDate = LocalDate.now().toString();
+            }
+        }
+
         return new AppointmentDtos.AppointmentResponse(
                 apt.getId(),
                 apt.getAppointmentNumber(),
@@ -380,7 +447,48 @@ public class AppointmentService {
                 apt.getReasonForVisit(),
                 apt.getConsultationMode(),
                 apt.getQueueToken(),
-                apt.getCreatedAt()
+                apt.getCreatedAt(),
+                appDate,
+                apt.getTriageLevel(),
+                apt.getVitalSigns(),
+                apt.getTriageNotes(),
+                apt.getTriagedBy(),
+                apt.getTriagedAt()
         );
     }
+
+    public AppointmentDtos.AppointmentResponse recordTriage(String appointmentId, AppointmentDtos.RecordTriageRequest req, UserPrincipal principal) {
+        AppointmentDocument apt = appointmentRepository.findById(appointmentId)
+                .orElseThrow(() -> new Exceptions.NotFoundException("Appointment not found: " + appointmentId));
+
+        if (req.triageLevel() != null && !req.triageLevel().isBlank()) {
+            apt.setTriageLevel(req.triageLevel().trim());
+        }
+        if (req.vitalSigns() != null) {
+            apt.setVitalSigns(req.vitalSigns().trim());
+        }
+        if (req.triageNotes() != null) {
+            apt.setTriageNotes(req.triageNotes().trim());
+        }
+        apt.setTriagedBy(principal != null ? principal.getUsername() : "NURSE");
+        apt.setTriagedAt(Instant.now());
+
+        AppointmentDocument saved = appointmentRepository.save(apt);
+        return mapToResponse(saved);
+    }
+
+    private void validateAppointmentDate(String appointmentDate) {
+        if (appointmentDate == null || appointmentDate.isBlank()) {
+            return;
+        }
+        try {
+            LocalDate parsed = LocalDate.parse(appointmentDate.trim());
+            if (parsed.isBefore(LocalDate.now())) {
+                throw new Exceptions.BadRequestException("Appointment date cannot be in the past.");
+            }
+        } catch (DateTimeParseException ex) {
+            throw new Exceptions.BadRequestException("Invalid appointment date format: " + appointmentDate + ". Expected ISO-8601 date (YYYY-MM-DD).");
+        }
+    }
 }
+

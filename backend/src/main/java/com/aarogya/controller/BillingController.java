@@ -22,13 +22,21 @@ public class BillingController {
     }
 
     @GetMapping("/invoices")
-    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('BILLING_STAFF', 'ADMIN')")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('BILLING_STAFF', 'RECEPTIONIST', 'ADMIN')")
     public ResponseEntity<List<BillingDtos.InvoiceResponse>> getAllInvoices() {
         return ResponseEntity.ok(billingService.getAllInvoices());
     }
 
+    @GetMapping("/invoices/{id}")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('PATIENT', 'BILLING_STAFF', 'RECEPTIONIST', 'ADMIN')")
+    public ResponseEntity<BillingDtos.InvoiceResponse> getInvoiceById(
+            @PathVariable String id,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseEntity.ok(billingService.getInvoiceById(id, principal));
+    }
+
     @PostMapping("/invoices")
-    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('BILLING_STAFF', 'ADMIN')")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('BILLING_STAFF', 'RECEPTIONIST', 'ADMIN')")
     public ResponseEntity<BillingDtos.InvoiceResponse> createInvoice(
             @Valid @RequestBody BillingDtos.CreateInvoiceRequest request,
             @AuthenticationPrincipal UserPrincipal principal) {
@@ -36,6 +44,7 @@ public class BillingController {
     }
 
     @PostMapping("/payments/simulate")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('PATIENT', 'BILLING_STAFF', 'RECEPTIONIST', 'ADMIN')")
     public ResponseEntity<BillingDtos.PaymentResponse> simulatePayment(
             @Valid @RequestBody BillingDtos.SimulatePaymentRequest request,
             @RequestHeader(required = false, name = "Idempotency-Key") String headerIdempotencyKey,

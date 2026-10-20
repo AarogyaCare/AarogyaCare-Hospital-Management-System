@@ -1,6 +1,7 @@
 package com.aarogya.controller;
 
 import com.aarogya.dto.SystemDesignDtos;
+import com.aarogya.exception.Exceptions;
 import com.aarogya.model.CrawlerDocument;
 import com.aarogya.model.ShortLinkDocument;
 import com.aarogya.systemdesign.autocomplete.AutocompleteTrieService;
@@ -200,11 +201,20 @@ public class SystemDesignController {
     }
 
     @PostMapping("/api/v1/system-design/hashring/nodes")
-    public ResponseEntity<Map<String, Object>> addHashRingNode(@RequestParam String name) {
-        hashRingRouter.addNode(name);
+    public ResponseEntity<Map<String, Object>> addHashRingNode(
+            @RequestParam(required = false) String name,
+            @RequestBody(required = false) Map<String, Object> body) {
+        String nodeName = name;
+        if ((nodeName == null || nodeName.isBlank()) && body != null && body.containsKey("name")) {
+            nodeName = String.valueOf(body.get("name"));
+        }
+        if (nodeName == null || nodeName.isBlank()) {
+            throw new Exceptions.BadRequestException("Node name parameter is required.");
+        }
+        hashRingRouter.addNode(nodeName);
         return ResponseEntity.status(HttpStatus.CREATED).body(Map.of(
                 "status", "ADDED",
-                "node", name,
+                "node", nodeName,
                 "current_stats", hashRingRouter.getDistributionStats()
         ));
     }
@@ -244,19 +254,30 @@ public class SystemDesignController {
     // 5. System Telemetry & Unique ID Generator Benchmark
     // -------------------------------------------------------------------------
     @GetMapping("/api/v1/system-design/telemetry")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<SystemDesignDtos.SystemTelemetryResponse> getTelemetry() {
         return ResponseEntity.ok(telemetryService.getTelemetry());
     }
 
     @GetMapping("/api/v1/system-design/ratelimiter/metrics")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, Object>> getRateLimiterMetrics() {
         return ResponseEntity.ok(rateLimiterService.getMetrics());
     }
 
     @PostMapping("/api/v1/system-design/ids/benchmark")
     public ResponseEntity<Map<String, Object>> benchmarkIds(
-            @RequestParam(defaultValue = "10000", name = "sample_size") int sampleSize) {
-        return ResponseEntity.ok(idGeneratorService.benchmark(sampleSize));
+            @RequestParam(required = false, name = "sample_size") Integer sampleSize,
+            @RequestBody(required = false) Map<String, Object> body) {
+        int count = 10000;
+        if (sampleSize != null && sampleSize > 0) {
+            count = sampleSize;
+        } else if (body != null && body.containsKey("sample_size")) {
+            try {
+                count = Integer.parseInt(String.valueOf(body.get("sample_size")));
+            } catch (Exception ignored) {}
+        }
+        return ResponseEntity.ok(idGeneratorService.benchmark(count));
     }
 
     private String resolveBaseUrl(HttpServletRequest request) {

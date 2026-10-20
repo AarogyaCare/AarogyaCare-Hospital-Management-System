@@ -22,7 +22,7 @@ public class UserPrincipal implements UserDetails {
         this.id = id;
         this.email = email;
         this.password = password;
-        this.role = role != null ? role.toLowerCase() : "patient";
+        this.role = normalizeRole(role);
         this.fullName = fullName;
         this.active = active;
         this.authorities = Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + this.role.toUpperCase()));
@@ -37,6 +37,11 @@ public class UserPrincipal implements UserDetails {
             user.getFullName(),
             user.isActive()
         );
+    }
+
+    public static String normalizeRole(String role) {
+        String normalized = role != null ? role.trim().toLowerCase() : "patient";
+        return "billing".equals(normalized) ? "billing_staff" : normalized;
     }
 
     public String getId() { return id; }

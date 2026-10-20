@@ -1,12 +1,17 @@
 package com.aarogya.model;
 
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
+import org.springframework.data.mongodb.core.index.CompoundIndexes;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
 
 @Document(collection = "appointments")
+@CompoundIndexes({
+    @CompoundIndex(name = "doctor_slot_date_unique", def = "{'doctorId': 1, 'slotId': 1, 'appointmentDate': 1}", unique = true, partialFilter = "{'appointmentDate': {'$type': 'string'}}")
+})
 public class AppointmentDocument {
 
     @Id
@@ -29,8 +34,14 @@ public class AppointmentDocument {
 
     private String reasonForVisit;
     private String consultationMode = "IN_PERSON"; // "IN_PERSON", "TELECONSULT"
+    private String appointmentDate;
     private String queueToken;
     private Instant checkedInAt;
+    private String triageLevel;
+    private String vitalSigns;
+    private String triageNotes;
+    private String triagedBy;
+    private Instant triagedAt;
     private Instant createdAt = Instant.now();
     private Instant updatedAt = Instant.now();
 
@@ -74,11 +85,29 @@ public class AppointmentDocument {
     public String getConsultationMode() { return consultationMode; }
     public void setConsultationMode(String consultationMode) { this.consultationMode = consultationMode; }
 
+    public String getAppointmentDate() { return appointmentDate; }
+    public void setAppointmentDate(String appointmentDate) { this.appointmentDate = appointmentDate; }
+
     public String getQueueToken() { return queueToken; }
     public void setQueueToken(String queueToken) { this.queueToken = queueToken; }
 
     public Instant getCheckedInAt() { return checkedInAt; }
     public void setCheckedInAt(Instant checkedInAt) { this.checkedInAt = checkedInAt; }
+
+    public String getTriageLevel() { return triageLevel; }
+    public void setTriageLevel(String triageLevel) { this.triageLevel = triageLevel; }
+
+    public String getVitalSigns() { return vitalSigns; }
+    public void setVitalSigns(String vitalSigns) { this.vitalSigns = vitalSigns; }
+
+    public String getTriageNotes() { return triageNotes; }
+    public void setTriageNotes(String triageNotes) { this.triageNotes = triageNotes; }
+
+    public String getTriagedBy() { return triagedBy; }
+    public void setTriagedBy(String triagedBy) { this.triagedBy = triagedBy; }
+
+    public Instant getTriagedAt() { return triagedAt; }
+    public void setTriagedAt(Instant triagedAt) { this.triagedAt = triagedAt; }
 
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }

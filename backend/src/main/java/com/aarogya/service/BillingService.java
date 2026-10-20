@@ -117,8 +117,18 @@ public class BillingService {
     }
 
     public BillingDtos.InvoiceResponse getInvoiceById(String id) {
+        return getInvoiceById(id, null);
+    }
+
+    public BillingDtos.InvoiceResponse getInvoiceById(String id, UserPrincipal principal) {
         InvoiceDocument doc = invoiceRepository.findById(id)
                 .orElseThrow(() -> new Exceptions.ResourceNotFoundException("Invoice not found with id: " + id));
+        if (principal != null && "patient".equalsIgnoreCase(principal.getRole())) {
+            Optional<PatientDocument> p = patientRepository.findByUserId(principal.getId());
+            if (p.isEmpty() || !p.get().getId().equals(doc.getPatientId())) {
+                throw new Exceptions.ForbiddenException("Access denied: You may only view your own invoices.");
+            }
+        }
         return mapInvoiceToDto(doc);
     }
 

@@ -59,17 +59,26 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/v1/medicines/**").permitAll()
                 // Public system-design components & health probes
                 .requestMatchers("/s/**").permitAll()
-                .requestMatchers("/api/v1/autocomplete/**").permitAll()
-                .requestMatchers("/api/v1/short-links/**").permitAll()
-                .requestMatchers("/api/v1/crawler/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/v1/autocomplete/**").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/v1/autocomplete/rebuild").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.GET, "/api/v1/short-links/**").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/v1/short-links").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/v1/short-links/*/revoke").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.GET, "/api/v1/crawler/**").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/v1/crawler/jobs").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.GET, "/api/v1/system-design/telemetry").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.GET, "/api/v1/system-design/ratelimiter/metrics").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.POST, "/api/v1/system-design/hashring/nodes/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/api/v1/system-design/hashring/nodes/**").hasRole("ADMIN")
                 .requestMatchers("/api/v1/system-design/**").permitAll()
                 .requestMatchers("/health/**").permitAll()
                 // Emergency intake registration (public emergency intake with rate limiter priority bypass)
                 .requestMatchers(HttpMethod.POST, "/api/v1/emergency/requests").permitAll()
                 // API Documentation & Swagger
                 .requestMatchers("/docs/**", "/swagger-ui/**", "/v3/api-docs/**", "/api/v1/openapi.json").permitAll()
-                // Actuator
-                .requestMatchers("/actuator/**").permitAll()
+                // Keep liveness public; operational details are administrator-only.
+                .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
+                .requestMatchers("/actuator/**").hasRole("ADMIN")
                 // All other hospital operational endpoints require valid authentication
                 .anyRequest().authenticated()
             )
@@ -84,10 +93,22 @@ public class SecurityConfig {
         configuration.setAllowedOrigins(Arrays.asList(
             "http://localhost:5173",
             "http://127.0.0.1:5173",
+            "http://localhost:5180",
+            "http://127.0.0.1:5180",
+            "http://localhost:5181",
+            "http://127.0.0.1:5181",
+            "http://localhost:5183",
+            "http://127.0.0.1:5183",
+            "http://localhost:8081",
+            "http://127.0.0.1:8081",
             "http://localhost:8000",
             "http://127.0.0.1:8000",
             "http://localhost:8080",
             "http://127.0.0.1:8080"
+        ));
+        configuration.setAllowedOriginPatterns(Arrays.asList(
+            "http://localhost:[*]",
+            "http://127.0.0.1:[*]"
         ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
