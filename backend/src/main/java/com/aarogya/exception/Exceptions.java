@@ -10,6 +10,11 @@ public class Exceptions {
         public ResourceNotFoundException(String message) { super(message); }
     }
 
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public static class NotFoundException extends ResourceNotFoundException {
+        public NotFoundException(String message) { super(message); }
+    }
+
     @ResponseStatus(HttpStatus.CONFLICT)
     public static class ConflictException extends RuntimeException {
         public ConflictException(String message) { super(message); }

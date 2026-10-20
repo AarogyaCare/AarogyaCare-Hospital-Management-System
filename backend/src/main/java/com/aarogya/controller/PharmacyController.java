@@ -39,4 +39,13 @@ public class PharmacyController {
             @AuthenticationPrincipal UserPrincipal principal) {
         return ResponseEntity.ok(pharmacyService.adjustStock(request, idempotencyKey, principal));
     }
+
+    @PostMapping("/pharmacy/prescriptions/{id}/dispense")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('PHARMACIST', 'ADMIN')")
+    public ResponseEntity<com.aarogya.dto.PrescriptionDtos.PrescriptionResponse> dispensePrescription(
+            @PathVariable String id,
+            @RequestHeader(required = false, name = "Idempotency-Key") String idempotencyKey,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseEntity.ok(pharmacyService.dispensePrescription(id, idempotencyKey, principal));
+    }
 }

@@ -26,6 +26,7 @@ public class AppointmentController {
     }
 
     @GetMapping
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('PATIENT', 'DOCTOR', 'NURSE', 'RECEPTIONIST', 'ADMIN')")
     public ResponseEntity<List<AppointmentDtos.AppointmentResponse>> getAppointments(
             @AuthenticationPrincipal UserPrincipal principal) {
         return ResponseEntity.ok(appointmentService.getAppointments(principal));
@@ -39,6 +40,7 @@ public class AppointmentController {
     }
 
     @PostMapping
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('PATIENT', 'RECEPTIONIST', 'ADMIN')")
     public ResponseEntity<AppointmentDtos.AppointmentResponse> bookAppointment(
             @Valid @RequestBody AppointmentDtos.BookAppointmentRequest request,
             @RequestHeader(required = false, name = "Idempotency-Key") String idempotencyKey,
@@ -60,6 +62,15 @@ public class AppointmentController {
             @Valid @RequestBody AppointmentDtos.RescheduleAppointmentRequest request,
             @AuthenticationPrincipal UserPrincipal principal) {
         return ResponseEntity.ok(appointmentService.rescheduleAppointment(id, request.newSlotId(), principal));
+    }
+
+    @PatchMapping("/{id}/status")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('DOCTOR', 'NURSE', 'RECEPTIONIST', 'ADMIN')")
+    public ResponseEntity<AppointmentDtos.AppointmentResponse> updateStatus(
+            @PathVariable String id,
+            @Valid @RequestBody AppointmentDtos.StatusUpdateRequest request,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseEntity.ok(appointmentService.updateAppointmentStatus(id, request.status(), principal));
     }
 
     @GetMapping("/{id}/notes")
@@ -98,5 +109,14 @@ public class AppointmentController {
             @AuthenticationPrincipal UserPrincipal principal) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(recordService.createPrescription(id, request, principal));
+    }
+
+    @PostMapping("/{id}/triage")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('NURSE', 'DOCTOR', 'ADMIN')")
+    public ResponseEntity<AppointmentDtos.AppointmentResponse> recordTriage(
+            @PathVariable String id,
+            @RequestBody AppointmentDtos.RecordTriageRequest request,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseEntity.ok(appointmentService.recordTriage(id, request, principal));
     }
 }

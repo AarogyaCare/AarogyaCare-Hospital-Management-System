@@ -51,14 +51,15 @@ public class AuthService {
             throw new Exceptions.UnauthorizedException("Invalid email or password.");
         }
 
-        String token = tokenProvider.generateToken(user.getId(), user.getEmail(), user.getRole());
+        String role = UserPrincipal.normalizeRole(user.getRole());
+        String token = tokenProvider.generateToken(user.getId(), user.getEmail(), role);
         AuthDtos.UserDto userDto = buildUserDto(user);
 
         return new AuthDtos.TokenResponse(
                 token,
                 "bearer",
                 user.getId(),
-                user.getRole(),
+                role,
                 user.getEmail(),
                 user.getFullName(),
                 userDto
@@ -105,7 +106,7 @@ public class AuthService {
                 token,
                 "bearer",
                 user.getId(),
-                user.getRole(),
+                UserPrincipal.normalizeRole(user.getRole()),
                 user.getEmail(),
                 user.getFullName(),
                 userDto
@@ -195,7 +196,7 @@ public class AuthService {
         return new AuthDtos.UserDto(
                 user.getId(),
                 user.getEmail(),
-                user.getRole(),
+                UserPrincipal.normalizeRole(user.getRole()),
                 user.getFullName(),
                 user.getPhone(),
                 user.isActive(),

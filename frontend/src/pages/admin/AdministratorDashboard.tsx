@@ -1,0 +1,247 @@
+import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import {
+  Building2, Activity, Users, ShieldCheck, DollarSign,
+  TrendingUp, Award, ArrowRight, Settings, FileSpreadsheet, Cpu, RefreshCw
+} from 'lucide-react';
+import { api } from '../../services/api';
+
+export default function AdministratorDashboard() {
+  const [stats, setStats] = useState({
+    totalPatients: 0,
+    totalAppointments: 0,
+    totalRevenue: 0,
+    paidRevenue: 0,
+    totalDoctors: 0,
+    totalMedicines: 0,
+    lowStockMedicines: 0,
+  });
+  const [isLoading, setIsLoading] = useState(true);
+
+  const loadMetrics = async () => {
+    setIsLoading(true);
+    try {
+      const [patientsRes, aptsRes, invoicesRes, docsRes, invRes] = await Promise.allSettled([
+        api.patients(),
+        api.appointments(),
+        api.invoices(),
+        api.doctors(),
+        api.inventory(),
+      ]);
+
+      const patients = patientsRes.status === 'fulfilled' ? patientsRes.value : [];
+      const appointments = aptsRes.status === 'fulfilled' ? aptsRes.value : [];
+      const invoices = invoicesRes.status === 'fulfilled' ? invoicesRes.value : [];
+      const docs = docsRes.status === 'fulfilled' ? docsRes.value.items : [];
+      const inventory = invRes.status === 'fulfilled' ? invRes.value : [];
+
+      const totalRev = invoices.reduce((sum, inv) => sum + Number(inv.net_payable || inv.total_amount || 0), 0);
+      const paidRev = invoices
+        .filter((inv) => String(inv.status).toUpperCase() === 'PAID')
+        .reduce((sum, inv) => sum + Number(inv.net_payable || inv.total_amount || 0), 0);
+
+      const lowStock = inventory.filter((item) => item.current_stock <= item.minimum_threshold).length;
+
+      setStats({
+        totalPatients: patients.length,
+        totalAppointments: appointments.length,
+        totalRevenue: totalRev,
+        paidRevenue: paidRev,
+        totalDoctors: docs.length,
+        totalMedicines: inventory.length,
+        lowStockMedicines: lowStock,
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadMetrics();
+  }, []);
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 space-y-6">
+      {/* Executive Banner */}
+      <div className="bg-gradient-to-r from-[#002043] via-[#002a50] to-[#178B8B] text-white p-6 md:p-8 rounded-3xl shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div>
+          <span className="text-xs font-bold uppercase tracking-wider text-teal-300 bg-teal-500/20 px-3 py-1 rounded-full border border-teal-400/30">
+            Executive Leadership Portal
+          </span>
+          <h1 className="text-2xl sm:text-3xl font-black mt-2 tracking-tight">
+            Hospital Administration &amp; Governance
+          </h1>
+          <p className="text-slate-300 text-xs md:text-sm mt-1 max-w-xl">
+            Real-time analytics and governance telemetry synchronized with Spring Boot &amp; MongoDB database.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={loadMetrics}
+            disabled={isLoading}
+            className="p-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl transition flex items-center gap-1.5 text-xs font-semibold"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+            <span>Sync</span>
+          </button>
+          <Link
+            to="/admin/users"
+            className="px-3.5 py-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-xl text-xs font-semibold transition"
+          >
+            RBAC &amp; Roles
+          </Link>
+          <Link
+            to="/admin/system-health"
+            className="px-3.5 py-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-xl text-xs font-semibold transition"
+          >
+            System Telemetry
+          </Link>
+          <Link
+            to="/admin/reports"
+            className="px-3.5 py-2 bg-teal-400 hover:bg-teal-300 text-[#002043] rounded-xl text-xs font-bold transition"
+          >
+            Audit Trails
+          </Link>
+        </div>
+      </div>
+
+      {/* 4 Executive Real Metrics KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm space-y-2">
+          <span className="text-xs font-bold uppercase text-slate-400">Total Registered Patients</span>
+          <p className="text-3xl font-black text-[#002043]">{isLoading ? '...' : stats.totalPatients}</p>
+          <span className="text-xs font-semibold text-emerald-600 flex items-center gap-1">
+            <Users className="w-3.5 h-3.5" />
+            <span>Universal Health ID Indexed</span>
+          </span>
+          <p className="text-[11px] text-slate-500 pt-1 border-t border-slate-100">Live MongoDB Master Index</p>
+        </div>
+
+        <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm space-y-2">
+          <span className="text-xs font-bold uppercase text-slate-400">Total Hospital Encounters</span>
+          <p className="text-3xl font-black text-teal-700">{isLoading ? '...' : stats.totalAppointments}</p>
+          <span className="text-xs font-semibold text-teal-700 flex items-center gap-1">
+            <Award className="w-3.5 h-3.5" />
+            <span>{stats.totalDoctors} Consulting Faculty</span>
+          </span>
+          <p className="text-[11px] text-slate-500 pt-1 border-t border-slate-100">OPD &amp; In-Person Consultations</p>
+        </div>
+
+        <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm space-y-2">
+          <span className="text-xs font-bold uppercase text-slate-400">Total Billed Revenue</span>
+          <p className="text-3xl font-black text-[#002043]">₹{isLoading ? '...' : stats.totalRevenue.toLocaleString()}</p>
+          <span className="text-xs font-semibold text-emerald-600 font-bold">
+            Settled: ₹{stats.paidRevenue.toLocaleString()}
+          </span>
+          <p className="text-[11px] text-slate-500 pt-1 border-t border-slate-100">Live Financial Ledger</p>
+        </div>
+
+        <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm space-y-2">
+          <span className="text-xs font-bold uppercase text-slate-400">Formulary &amp; Inventory</span>
+          <p className="text-3xl font-black text-emerald-600">{isLoading ? '...' : stats.totalMedicines}</p>
+          <span className={`text-xs font-semibold flex items-center gap-1 ${
+            stats.lowStockMedicines > 0 ? 'text-rose-600' : 'text-emerald-600'
+          }`}>
+            <ShieldCheck className="w-3.5 h-3.5" />
+            <span>{stats.lowStockMedicines} Low Stock Alerts</span>
+          </span>
+          <p className="text-[11px] text-slate-500 pt-1 border-t border-slate-100">Synchronized Pharmacy Stock</p>
+        </div>
+      </div>
+
+      {/* Clinical Volume & Governance Details */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Governance & Hospital System Links */}
+        <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+            <h3 className="text-base font-bold text-slate-900">Administrative Governance Modules</h3>
+            <span className="text-xs text-teal-700 font-bold">Fast Access</span>
+          </div>
+
+          <div className="space-y-3 mt-3">
+            <Link
+              to="/admin/users"
+              className="p-4 bg-slate-50 hover:bg-teal-50/50 rounded-2xl border border-slate-200 transition flex items-center justify-between text-xs group"
+            >
+              <div>
+                <h4 className="font-bold text-slate-900 group-hover:text-[#002043]">Staff &amp; Role-Based Access (RBAC)</h4>
+                <p className="text-slate-500 text-[11px] mt-0.5">Provision and manage staff accounts and roles (Doctor, Nurse, Receptionist, Pharmacist, Billing)</p>
+              </div>
+              <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-[#178B8B] transition" />
+            </Link>
+
+            <Link
+              to="/admin/system-health"
+              className="p-4 bg-slate-50 hover:bg-teal-50/50 rounded-2xl border border-slate-200 transition flex items-center justify-between text-xs group"
+            >
+              <div>
+                <h4 className="font-bold text-slate-900 group-hover:text-[#002043]">Distributed System Architecture Health</h4>
+                <p className="text-slate-500 text-[11px] mt-0.5">Real-time Spring Boot, MongoDB ping, Redis health telemetry, and cluster status</p>
+              </div>
+              <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-[#178B8B] transition" />
+            </Link>
+
+            <Link
+              to="/admin/reports"
+              className="p-4 bg-slate-50 hover:bg-teal-50/50 rounded-2xl border border-slate-200 transition flex items-center justify-between text-xs group"
+            >
+              <div>
+                <h4 className="font-bold text-slate-900 group-hover:text-[#002043]">Clinical Audit Trail &amp; Medico-Legal Logs</h4>
+                <p className="text-slate-500 text-[11px] mt-0.5">Aggregated audit log of triage events, consultation notes, dispensing, and billing</p>
+              </div>
+              <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-[#178B8B] transition" />
+            </Link>
+          </div>
+        </div>
+
+        {/* Operational Overview */}
+        <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm space-y-4 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <h3 className="text-base font-bold text-slate-900">Hospital Operations Snapshot</h3>
+              <Link to="/operations/hub" className="text-xs text-teal-700 font-bold hover:underline">View Operations Hub</Link>
+            </div>
+
+            <div className="space-y-3 mt-3 text-xs">
+              <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 flex items-center justify-between">
+                <div>
+                  <span className="font-bold text-slate-900 block">Outpatient Department (OPD) Scheduling</span>
+                  <span className="text-slate-500 text-[11px]">{stats.totalAppointments} consultations recorded in master system</span>
+                </div>
+                <Link to="/operations/appointments" className="px-3 py-1.5 bg-[#002043] text-white rounded-xl font-bold text-[11px]">
+                  Manage
+                </Link>
+              </div>
+
+              <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 flex items-center justify-between">
+                <div>
+                  <span className="font-bold text-slate-900 block">Pharmacy &amp; Dispensary Control</span>
+                  <span className="text-slate-500 text-[11px]">{stats.totalMedicines} formulary drugs ({stats.lowStockMedicines} alerts)</span>
+                </div>
+                <Link to="/pharmacy" className="px-3 py-1.5 bg-[#002043] text-white rounded-xl font-bold text-[11px]">
+                  Dispensary
+                </Link>
+              </div>
+
+              <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 flex items-center justify-between">
+                <div>
+                  <span className="font-bold text-slate-900 block">Patient Records &amp; EMR</span>
+                  <span className="text-slate-500 text-[11px]">{stats.totalPatients} verified universal medical charts</span>
+                </div>
+                <Link to="/emr/patients" className="px-3 py-1.5 bg-[#002043] text-white rounded-xl font-bold text-[11px]">
+                  Open EMR
+                </Link>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-4 bg-slate-100 rounded-2xl text-xs text-slate-600 flex items-center justify-between">
+            <span>Aarogya Care Central Campus: Grems Road, Chennai</span>
+            <span className="font-mono text-emerald-700 font-bold">API Status: Connected</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

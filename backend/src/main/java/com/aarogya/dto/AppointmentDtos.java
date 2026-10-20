@@ -10,13 +10,28 @@ public class AppointmentDtos {
     public record BookAppointmentRequest(
         @NotBlank @JsonProperty("slot_id") String slotId,
         @JsonProperty("reason_for_visit") String reasonForVisit,
-        @JsonProperty("consultation_mode") String consultationMode
-    ) {}
+        @JsonProperty("consultation_mode") String consultationMode,
+        @NotBlank @JsonProperty("appointment_date") String appointmentDate,
+        @JsonProperty("patient_id") String patientId
+    ) {
+        public BookAppointmentRequest(String slotId, String reasonForVisit, String consultationMode) {
+            this(slotId, reasonForVisit, consultationMode, null, null);
+        }
+
+        public BookAppointmentRequest(String slotId, String reasonForVisit, String consultationMode, String appointmentDate) {
+            this(slotId, reasonForVisit, consultationMode, appointmentDate, null);
+        }
+    }
 
     public record RescheduleAppointmentRequest(
         @NotBlank @JsonProperty("new_slot_id") String newSlotId,
-        String reason
-    ) {}
+        String reason,
+        @JsonProperty("new_appointment_date") String newAppointmentDate
+    ) {
+        public RescheduleAppointmentRequest(String newSlotId, String reason) {
+            this(newSlotId, reason, null);
+        }
+    }
 
     public record AppointmentResponse(
         String id,
@@ -33,7 +48,19 @@ public class AppointmentDtos {
         @JsonProperty("reason_for_visit") String reasonForVisit,
         @JsonProperty("consultation_mode") String consultationMode,
         @JsonProperty("queue_token") String queueToken,
-        @JsonProperty("created_at") Instant createdAt
+        @JsonProperty("created_at") Instant createdAt,
+        @JsonProperty("appointment_date") String appointmentDate,
+        @JsonProperty("triage_level") String triageLevel,
+        @JsonProperty("vital_signs") String vitalSigns,
+        @JsonProperty("triage_notes") String triageNotes,
+        @JsonProperty("triaged_by") String triagedBy,
+        @JsonProperty("triaged_at") Instant triagedAt
+    ) {}
+
+    public record RecordTriageRequest(
+        @JsonProperty("triage_level") String triageLevel,
+        @JsonProperty("vital_signs") String vitalSigns,
+        @JsonProperty("triage_notes") String triageNotes
     ) {}
 
     public record ClinicalNoteRequest(
@@ -57,5 +84,9 @@ public class AppointmentDtos {
         @JsonProperty("doctor_notes") String doctorNotes,
         @JsonProperty("follow_up_date") String followUpDate,
         @JsonProperty("created_at") Instant createdAt
+    ) {}
+
+    public record StatusUpdateRequest(
+        @NotBlank String status
     ) {}
 }

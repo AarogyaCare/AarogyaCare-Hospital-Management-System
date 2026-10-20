@@ -27,8 +27,11 @@ public class DatabaseSeedService {
     private final ClinicalRecordRepository recordRepository;
     private final PrescriptionRepository prescriptionRepository;
     private final InvoiceRepository invoiceRepository;
+    private final PaymentRepository paymentRepository;
+    private final LabOrderRepository labOrderRepository;
     private final EmergencyRequestRepository emergencyRepository;
     private final PasswordEncoder passwordEncoder;
+    private final org.springframework.core.env.Environment env;
 
     public DatabaseSeedService(
             UserRepository userRepository,
@@ -42,8 +45,11 @@ public class DatabaseSeedService {
             ClinicalRecordRepository recordRepository,
             PrescriptionRepository prescriptionRepository,
             InvoiceRepository invoiceRepository,
+            PaymentRepository paymentRepository,
+            LabOrderRepository labOrderRepository,
             EmergencyRequestRepository emergencyRepository,
-            PasswordEncoder passwordEncoder) {
+            PasswordEncoder passwordEncoder,
+            org.springframework.core.env.Environment env) {
         this.userRepository = userRepository;
         this.patientRepository = patientRepository;
         this.departmentRepository = departmentRepository;
@@ -55,16 +61,23 @@ public class DatabaseSeedService {
         this.recordRepository = recordRepository;
         this.prescriptionRepository = prescriptionRepository;
         this.invoiceRepository = invoiceRepository;
+        this.paymentRepository = paymentRepository;
+        this.labOrderRepository = labOrderRepository;
         this.emergencyRepository = emergencyRepository;
         this.passwordEncoder = passwordEncoder;
+        this.env = env;
     }
 
     @PostConstruct
     public void seedInitialData() {
         try {
             seedDepartmentsAndSpecializations();
-            seedUsersAndProfiles();
             seedMedicines();
+            if (isProductionEnvironment()) {
+                logger.info("Production profile active: Skipping privileged master demo accounts and synthetic clinical records.");
+                return;
+            }
+            seedUsersAndProfiles();
             seedInitialAppointmentsAndRecords();
             seedEmergencyQueue();
             logger.info("Aarogya Care synthetic database seeding completed successfully.");
@@ -73,8 +86,22 @@ public class DatabaseSeedService {
         }
     }
 
+    private boolean isProductionEnvironment() {
+        if (env != null) {
+            for (String profile : env.getActiveProfiles()) {
+                if ("prod".equalsIgnoreCase(profile) || "production".equalsIgnoreCase(profile)) {
+                    return true;
+                }
+            }
+        }
+        String appEnv = System.getenv("APP_ENV");
+        String springEnv = System.getenv("SPRING_PROFILES_ACTIVE");
+        return "prod".equalsIgnoreCase(appEnv) || "production".equalsIgnoreCase(appEnv)
+                || "prod".equalsIgnoreCase(springEnv) || "production".equalsIgnoreCase(springEnv);
+    }
+
     private void seedDepartmentsAndSpecializations() {
-        if (departmentRepository.count() > 0) return;
+        if (departmentRepository.findById("dept-cardio").isPresent()) return;
 
         List<DepartmentDocument> depts = List.of(
             new DepartmentDocument("dept-cardio", "CARDIO", "Cardiology", "Specialized cardiac care, coronary intervention, and arrhythmia diagnostics.", "Heart"),
@@ -99,7 +126,14 @@ public class DatabaseSeedService {
     }
 
     private void seedUsersAndProfiles() {
-        if (userRepository.count() > 0) return;
+        if (userRepository.findById("user-admin").isPresent()) {
+            UserDocument existingBilling = userRepository.findById("user-billing").orElse(null);
+            if (existingBilling != null && !"billing_staff".equals(existingBilling.getRole())) {
+                existingBilling.setRole("billing_staff");
+                userRepository.save(existingBilling);
+            }
+            return;
+        }
 
         String encodedMaster = passwordEncoder.encode(MASTER_PASSWORD);
 
@@ -183,8 +217,8 @@ public class DatabaseSeedService {
         UserDocument pharmacist = new UserDocument("user-pharmacist", "pharmacist@aarogyacare.org", encodedMaster, "Senior Clinical Pharmacist", "pharmacist", "+91 98765 43217");
         userRepository.save(pharmacist);
 
-        // 9. Billing Desk
-        UserDocument billing = new UserDocument("user-billing", "billing@aarogyacare.org", encodedMaster, "Chief Billing Officer", "billing", "+91 98765 43218");
+        // 9. Billing Desk (Role matches Spring Security ROLE_BILLING_STAFF)
+        UserDocument billing = new UserDocument("user-billing", "billing@aarogyacare.org", encodedMaster, "Chief Billing Officer", "billing_staff", "+91 98765 43218");
         userRepository.save(billing);
 
         // 10. Patient Rajendran
@@ -214,20 +248,22 @@ public class DatabaseSeedService {
 
         for (int i = 0; i < slotTimes.length; i++) {
             String slotId = "slot-" + doctorId + "-" + (i + 1);
-            DoctorSlotDocument slot = new DoctorSlotDocument(
-                slotId,
-                doctorId,
-                slotTimes[i],
-                slotTimes[i].replace("00", "30").replace("30", "00"),
-                "AVAILABLE",
-                roomNumber
-            );
-            slotRepository.save(slot);
+            if (slotRepository.findById(slotId).isEmpty()) {
+                DoctorSlotDocument slot = new DoctorSlotDocument(
+                    slotId,
+                    doctorId,
+                    slotTimes[i],
+                    slotTimes[i].replace("00", "30").replace("30", "00"),
+                    "AVAILABLE",
+                    roomNumber
+                );
+                slotRepository.save(slot);
+            }
         }
     }
 
     private void seedMedicines() {
-        if (medicineRepository.count() > 0) return;
+        if (medicineRepository.findById("med-1").isPresent()) return;
 
         List<MedicineDocument> meds = List.of(
             new MedicineDocument("med-1", "MED-PCM-650", "Paracetamol 650mg", "Dolo 650", "Analgesic", "TABLET", "650mg", 32.50, 500, 50),
@@ -241,80 +277,180 @@ public class DatabaseSeedService {
     }
 
     private void seedInitialAppointmentsAndRecords() {
-        if (appointmentRepository.count() > 0) return;
-
         // Book slot 1 for doc-1
         String slotId = "slot-doc-1-1";
         DoctorSlotDocument slot = slotRepository.findById(slotId).orElse(null);
-        if (slot != null) {
+        if (slot != null && !"BOOKED".equals(slot.getStatus())) {
             slot.setStatus("BOOKED");
             slotRepository.save(slot);
         }
 
-        AppointmentDocument apt = new AppointmentDocument(
-            "apt-seed-1",
-            "APT-2026-001",
-            "pat-1",
-            "doc-1",
-            slotId,
-            "Routine cardiology health checkup and hypertension review.",
-            "IN_PERSON",
-            "Q-101"
-        );
-        apt.setStatus("CONFIRMED");
-        appointmentRepository.save(apt);
+        AppointmentDocument apt = appointmentRepository.findById("apt-seed-1").orElse(null);
+        if (apt == null) {
+            apt = new AppointmentDocument(
+                "apt-seed-1",
+                "APT-2026-001",
+                "pat-1",
+                "doc-1",
+                slotId,
+                "Routine cardiology health checkup and hypertension review.",
+                "IN_PERSON",
+                "Q-101"
+            );
+            apt.setStatus("CONFIRMED");
+            apt.setAppointmentDate(java.time.LocalDate.now().toString());
+        }
+        if (apt.getTriageLevel() == null) {
+            apt.setCheckedInAt(java.time.Instant.now().minus(java.time.Duration.ofMinutes(50)));
+            apt.setTriageLevel("ESI-3");
+            apt.setVitalSigns("BP: 138/88 mmHg, Pulse: 78 bpm, SpO2: 98%, Temp: 98.4 F, RR: 16 bpm");
+            apt.setTriageNotes("Patient alert, oriented x 3. Reports intermittent exertional chest discomfort.");
+            apt.setTriagedBy("nurse@aarogyacare.org");
+            apt.setTriagedAt(java.time.Instant.now().minus(java.time.Duration.ofMinutes(40)));
+            appointmentRepository.save(apt);
+        }
 
         // Clinical Record
-        ClinicalRecordDocument record = new ClinicalRecordDocument(
-            "rec-seed-1",
-            "pat-1",
-            "apt-seed-1",
-            "doc-1",
-            "Exertional dyspnea and periodic palpitations over the last 3 weeks.",
-            "BP 138/88 mmHg, Heart Rate 78 bpm regular. S1/S2 heard, no murmurs.",
-            "Stage 1 Essential Hypertension with mild sinus tachycardia.",
-            "Lifestyle modification, low sodium intake, aerobic exercise.",
-            "Maintain twice-daily BP log. Follow up in 4 weeks.",
-            "2026-11-15"
-        );
-        recordRepository.save(record);
+        if (recordRepository.findById("rec-seed-1").isEmpty()) {
+            ClinicalRecordDocument record = new ClinicalRecordDocument(
+                "rec-seed-1",
+                "pat-1",
+                "apt-seed-1",
+                "doc-1",
+                "Exertional dyspnea and periodic palpitations over the last 3 weeks.",
+                "BP 138/88 mmHg, Heart Rate 78 bpm regular. S1/S2 heard, no murmurs.",
+                "Stage 1 Essential Hypertension with mild sinus tachycardia.",
+                "Lifestyle modification, low sodium intake, aerobic exercise.",
+                "Maintain twice-daily BP log. Follow up in 4 weeks.",
+                "2026-11-15"
+            );
+            recordRepository.save(record);
+        }
 
         // Prescription
-        PrescriptionDocument.PrescriptionItem item1 = new PrescriptionDocument.PrescriptionItem(
-            "med-3", "Atorvastatin 20mg", "20mg", "Once Daily at Bedtime", 30, "Take after dinner", 30
-        );
-        PrescriptionDocument.PrescriptionItem item2 = new PrescriptionDocument.PrescriptionItem(
-            "med-5", "Pantoprazole 40mg", "40mg", "Once Daily Morning", 15, "Take empty stomach", 15
-        );
-        PrescriptionDocument rx = new PrescriptionDocument(
-            "rx-seed-1",
-            "RX-2026-001",
-            "pat-1",
-            "apt-seed-1",
-            "doc-1",
-            List.of(item1, item2)
-        );
-        prescriptionRepository.save(rx);
+        if (prescriptionRepository.findById("rx-seed-1").isEmpty()) {
+            PrescriptionDocument.PrescriptionItem item1 = new PrescriptionDocument.PrescriptionItem(
+                "med-3", "Atorvastatin 20mg", "20mg", "Once Daily at Bedtime", 30, "Take after dinner", 30
+            );
+            PrescriptionDocument.PrescriptionItem item2 = new PrescriptionDocument.PrescriptionItem(
+                "med-5", "Pantoprazole 40mg", "40mg", "Once Daily Morning", 15, "Take empty stomach", 15
+            );
+            PrescriptionDocument rx = new PrescriptionDocument(
+                "rx-seed-1",
+                "RX-2026-001",
+                "pat-1",
+                "apt-seed-1",
+                "doc-1",
+                List.of(item1, item2)
+            );
+            prescriptionRepository.save(rx);
+        }
 
-        // Invoice
-        InvoiceDocument.InvoiceItem invItem1 = new InvoiceDocument.InvoiceItem("Specialist Consultation Fee", "CONSULTATION", 800.0, 1, 800.0);
-        InvoiceDocument.InvoiceItem invItem2 = new InvoiceDocument.InvoiceItem("Electrocardiogram (ECG 12-Lead)", "DIAGNOSTICS", 450.0, 1, 450.0);
-        InvoiceDocument inv = new InvoiceDocument(
-            "inv-seed-1",
-            "INV-2026-001",
-            "pat-1",
-            "apt-seed-1",
-            1250.0,
-            0.0,
-            62.50,
-            1312.50,
-            List.of(invItem1, invItem2)
-        );
-        invoiceRepository.save(inv);
+        // Invoices and Reconciled Payment
+        InvoiceDocument inv1 = invoiceRepository.findById("inv-seed-1").orElse(null);
+        if (inv1 == null) {
+            InvoiceDocument.InvoiceItem invItem1 = new InvoiceDocument.InvoiceItem("Specialist Consultation Fee", "CONSULTATION", 800.0, 1, 800.0);
+            InvoiceDocument.InvoiceItem invItem2 = new InvoiceDocument.InvoiceItem("Electrocardiogram (ECG 12-Lead)", "DIAGNOSTICS", 450.0, 1, 450.0);
+            inv1 = new InvoiceDocument(
+                "inv-seed-1",
+                "INV-2026-001",
+                "pat-1",
+                "apt-seed-1",
+                1250.0,
+                0.0,
+                62.50,
+                1312.50,
+                List.of(invItem1, invItem2)
+            );
+            inv1.setStatus("PAID");
+            invoiceRepository.save(inv1);
+        } else if (!"PAID".equals(inv1.getStatus())) {
+            inv1.setStatus("PAID");
+            invoiceRepository.save(inv1);
+        }
+
+        if (paymentRepository.findById("pay-seed-1").isEmpty()) {
+            PaymentDocument pay = new PaymentDocument(
+                "pay-seed-1",
+                "inv-seed-1",
+                1312.50,
+                "UPI",
+                "UPI-TXN-20261020-001",
+                "IDEMP-SEED-PAY-001",
+                "SUCCESS"
+            );
+            paymentRepository.save(pay);
+        }
+
+        // Additional Pending Invoice for billing desk testing
+        if (invoiceRepository.findById("inv-seed-2").isEmpty()) {
+            InvoiceDocument.InvoiceItem inv2Item1 = new InvoiceDocument.InvoiceItem("Lipid Profile Complete", "DIAGNOSTICS", 500.0, 1, 500.0);
+            InvoiceDocument.InvoiceItem inv2Item2 = new InvoiceDocument.InvoiceItem("Follow-up Cardiac Evaluation", "CONSULTATION", 600.0, 1, 600.0);
+            InvoiceDocument inv2 = new InvoiceDocument(
+                "inv-seed-2",
+                "INV-2026-002",
+                "pat-1",
+                "apt-seed-1",
+                1100.0,
+                0.0,
+                55.0,
+                1155.0,
+                List.of(inv2Item1, inv2Item2)
+            );
+            inv2.setStatus("PENDING");
+            invoiceRepository.save(inv2);
+        }
+
+        // Laboratory Orders (Completed + In Progress)
+        if (labOrderRepository.findById("lab-seed-1").isEmpty()) {
+            LabOrderDocument lab1 = new LabOrderDocument(
+                "lab-seed-1",
+                "LAB-2026-001",
+                "pat-1",
+                "apt-seed-1",
+                "doc-1",
+                "Lipid Profile Complete",
+                "BIOCHEMISTRY",
+                "SERUM",
+                "ROUTINE"
+            );
+            lab1.setStatus("COMPLETED");
+            lab1.setResultValue("Total Chol: 210 mg/dL, HDL: 42 mg/dL, LDL: 138 mg/dL, Triglycerides: 160 mg/dL");
+            lab1.setUnit("mg/dL");
+            lab1.setReferenceRange("Total Chol < 200, HDL > 40, LDL < 100, TG < 150");
+            lab1.setClinicalRemarks("Borderline hyperlipidemia noted. Lifestyle modifications recommended.");
+            lab1.setTechnicianNotes("Fasting sample verified, non-hemolyzed.");
+            lab1.setPerformedBy("nurse@aarogyacare.org");
+            lab1.setReviewedBy("dr.ramanathan@aarogyacare.org");
+            lab1.setOrderedAt(java.time.Instant.now().minus(java.time.Duration.ofHours(4)));
+            lab1.setSampleCollectedAt(java.time.Instant.now().minus(java.time.Duration.ofHours(3)));
+            lab1.setCompletedAt(java.time.Instant.now().minus(java.time.Duration.ofHours(1)));
+            lab1.setReleasedAt(java.time.Instant.now().minus(java.time.Duration.ofMinutes(45)));
+            labOrderRepository.save(lab1);
+        }
+
+        if (labOrderRepository.findById("lab-seed-2").isEmpty()) {
+            LabOrderDocument lab2 = new LabOrderDocument(
+                "lab-seed-2",
+                "LAB-2026-002",
+                "pat-1",
+                "apt-seed-1",
+                "doc-1",
+                "Complete Blood Count (CBC)",
+                "HEMATOLOGY",
+                "BLOOD",
+                "ROUTINE"
+            );
+            lab2.setStatus("SAMPLE_COLLECTED");
+            lab2.setTechnicianNotes("Sample barcoded and transferred to hematology analyzer rack.");
+            lab2.setOrderedAt(java.time.Instant.now().minus(java.time.Duration.ofHours(2)));
+            lab2.setSampleCollectedAt(java.time.Instant.now().minus(java.time.Duration.ofMinutes(30)));
+            labOrderRepository.save(lab2);
+        }
     }
 
     private void seedEmergencyQueue() {
-        if (emergencyRepository.count() > 0) return;
+        if (emergencyRepository.findById("em-1").isPresent()) return;
 
         List<EmergencyRequestDocument> list = List.of(
             new EmergencyRequestDocument("em-1", "Kavitha R.", "pat-1", "+91 98765 43220", "RED", "Acute chest pain, diaphoresis, radiating left arm pain", "BP: 85/55, HR: 122, SpO2: 91%"),
