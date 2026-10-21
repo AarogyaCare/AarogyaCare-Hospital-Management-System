@@ -93,9 +93,12 @@ public class AppointmentService {
                     patientId = principal.getId();
                 }
             }
-        } else if (Set.of("receptionist", "admin").contains(role) && req.patientId() != null && !req.patientId().isBlank()) {
+        } else if (Set.of("receptionist", "admin").contains(role)) {
+            if (req.patientId() == null || req.patientId().isBlank()) {
+                throw new Exceptions.BadRequestException("Patient ID is required when booking an appointment as staff.");
+            }
             PatientDocument patient = patientRepository.findById(req.patientId())
-                    .orElseThrow(() -> new Exceptions.ResourceNotFoundException("Patient record not found."));
+                    .orElseThrow(() -> new Exceptions.ResourceNotFoundException("Patient record not found with id: " + req.patientId()));
             patientId = patient.getId();
             patientName = userRepository.findById(patient.getUserId()).map(UserDocument::getFullName).orElse("Patient");
         } else if (req.patientId() != null && !req.patientId().isBlank()) {
@@ -107,35 +110,21 @@ public class AppointmentService {
             patientId = principal.getId();
         }
 
-        // 3. Atomically reserve slot to prevent race conditions / double bookings
-        Query slotQuery = Query.query(Criteria.where("_id").is(req.slotId()).and("status").is("AVAILABLE"));
-        Update slotUpdate = new Update().set("status", "BOOKED").set("updatedAt", Instant.now());
-        DoctorSlotDocument reservedSlot = mongoTemplate.findAndModify(
-                slotQuery,
-                slotUpdate,
-                FindAndModifyOptions.options().returnNew(true),
-                DoctorSlotDocument.class
-        );
-
-        if (reservedSlot == null) {
-            DoctorSlotDocument existing = slotRepository.findById(req.slotId()).orElse(null);
-            if (existing == null) {
-                throw new Exceptions.ResourceNotFoundException("Doctor slot not found with id: " + req.slotId());
-            }
-            throw new Exceptions.ConflictException("Doctor slot is already booked or unavailable.");
+        // 3. DEF-01 FIX: Read-only slot existence check.
+        //    Slot templates are shared across dates; mutating their status permanently would
+        //    prevent booking on any other date.  Concurrency for a specific date is enforced
+        //    instead by the compound unique index on (doctorId, slotId, appointmentDate) in
+        //    AppointmentDocument, which causes DuplicateKeyException on the save below.
+        DoctorSlotDocument reservedSlot = slotRepository.findById(req.slotId())
+                .orElseThrow(() -> new Exceptions.ResourceNotFoundException("Doctor slot not found with id: " + req.slotId()));
+        if ("BLOCKED".equalsIgnoreCase(reservedSlot.getStatus()) || "CANCELLED".equalsIgnoreCase(reservedSlot.getStatus())) {
+            throw new Exceptions.ConflictException("This doctor slot is permanently blocked or cancelled and cannot be booked.");
         }
 
-        // Concurrency check scoped to date if specified
-        if (req.appointmentDate() != null && !req.appointmentDate().isBlank()) {
-            if (appointmentRepository.existsByDoctorIdAndSlotIdAndAppointmentDateAndStatusNot(
-                    reservedSlot.getDoctorId(), reservedSlot.getId(), req.appointmentDate(), "CANCELLED")) {
-                mongoTemplate.updateFirst(
-                        Query.query(Criteria.where("_id").is(req.slotId())),
-                        new Update().set("status", "AVAILABLE").set("updatedAt", Instant.now()),
-                        DoctorSlotDocument.class
-                );
-                throw new Exceptions.ConflictException("This doctor already has an appointment at that time on the selected date.");
-            }
+        // Early conflict check (non-atomic fast path; real atomicity is the unique index on save)
+        if (appointmentRepository.existsByDoctorIdAndSlotIdAndAppointmentDateAndStatusNot(
+                reservedSlot.getDoctorId(), reservedSlot.getId(), req.appointmentDate(), "CANCELLED")) {
+            throw new Exceptions.ConflictException("This time slot is already booked for the selected date.");
         }
 
         // 4. Resolve doctor and department names
@@ -167,15 +156,14 @@ public class AppointmentService {
                 queueToken
         );
         appointment.setAppointmentDate(req.appointmentDate());
+        // DEF-01: Save appointment; the compound unique index on (doctorId, slotId, appointmentDate)
+        //   (partial: status NOT IN [CANCELLED, NO_SHOW]) enforces atomic concurrency for same-date bookings.
+        //   DuplicateKeyException means a concurrent request already saved an active booking for this slot+date.
         try {
             appointmentRepository.save(appointment);
         } catch (DuplicateKeyException ex) {
-            mongoTemplate.updateFirst(
-                    Query.query(Criteria.where("_id").is(req.slotId())),
-                    new Update().set("status", "AVAILABLE").set("updatedAt", Instant.now()),
-                    DoctorSlotDocument.class
-            );
-            throw new Exceptions.ConflictException("This doctor already has an appointment at that time on the selected date.");
+            // No slot document mutation — slot template status is never changed by booking logic (DEF-01).
+            throw new Exceptions.ConflictException("This time slot is already booked for the selected date. Please choose a different date or slot.");
         }
 
         AppointmentDtos.AppointmentResponse response = mapToResponse(appointment);
@@ -225,12 +213,10 @@ public class AppointmentService {
         appointment.setUpdatedAt(Instant.now());
         appointmentRepository.save(appointment);
 
-        // Atomically restore slot status back to AVAILABLE only if previously confirmed/booked
-        mongoTemplate.updateFirst(
-                Query.query(Criteria.where("_id").is(appointment.getSlotId())),
-                new Update().set("status", "AVAILABLE").set("updatedAt", Instant.now()),
-                DoctorSlotDocument.class
-        );
+        // DEF-01 FIX: Slot templates must NOT have their status mutated on cancel.
+        //   Availability for a date is derived by querying the appointments collection,
+        //   not by the DoctorSlotDocument.status field.  Marking the appointment CANCELLED
+        //   above is sufficient; the slot template remains untouched.
 
         auditService.recordEvent(
                 principal != null ? principal.getId() : "system",
@@ -256,26 +242,19 @@ public class AppointmentService {
             throw new Exceptions.ConflictException("Cannot reschedule an appointment with status: " + currentStatus);
         }
 
-        // Atomically reserve the new slot
-        Query newSlotQuery = Query.query(Criteria.where("_id").is(newSlotId).and("status").is("AVAILABLE"));
-        Update newSlotUpdate = new Update().set("status", "BOOKED").set("updatedAt", Instant.now());
-        DoctorSlotDocument reservedNewSlot = mongoTemplate.findAndModify(
-                newSlotQuery,
-                newSlotUpdate,
-                FindAndModifyOptions.options().returnNew(true),
-                DoctorSlotDocument.class
-        );
-
-        if (reservedNewSlot == null) {
-            throw new Exceptions.ConflictException("Target reschedule slot is not available.");
+        // DEF-01 FIX: Read-only slot existence check for reschedule (same rationale as bookAppointment).
+        DoctorSlotDocument reservedNewSlot = slotRepository.findById(newSlotId)
+                .orElseThrow(() -> new Exceptions.ResourceNotFoundException("Target reschedule slot not found: " + newSlotId));
+        if ("BLOCKED".equalsIgnoreCase(reservedNewSlot.getStatus()) || "CANCELLED".equalsIgnoreCase(reservedNewSlot.getStatus())) {
+            throw new Exceptions.ConflictException("Target reschedule slot is permanently blocked or cancelled.");
         }
-
-        // Release old slot
-        mongoTemplate.updateFirst(
-                Query.query(Criteria.where("_id").is(appointment.getSlotId())),
-                new Update().set("status", "AVAILABLE").set("updatedAt", Instant.now()),
-                DoctorSlotDocument.class
-        );
+        // Check the new slot isn't already booked on the same appointment date
+        if (appointment.getAppointmentDate() != null &&
+                appointmentRepository.existsByDoctorIdAndSlotIdAndAppointmentDateAndStatusNot(
+                        reservedNewSlot.getDoctorId(), newSlotId, appointment.getAppointmentDate(), "CANCELLED")) {
+            throw new Exceptions.ConflictException("Target reschedule slot is already booked for that date.");
+        }
+        // Old slot template is NOT modified; cancelling the appointment document is sufficient.
 
         // Update appointment
         appointment.setSlotId(newSlotId);
@@ -478,8 +457,9 @@ public class AppointmentService {
     }
 
     private void validateAppointmentDate(String appointmentDate) {
+        // DEF-01: appointment_date is mandatory; null/blank is rejected with HTTP 400
         if (appointmentDate == null || appointmentDate.isBlank()) {
-            return;
+            throw new Exceptions.BadRequestException("Appointment date is required. Provide a valid future date in YYYY-MM-DD format.");
         }
         try {
             LocalDate parsed = LocalDate.parse(appointmentDate.trim());

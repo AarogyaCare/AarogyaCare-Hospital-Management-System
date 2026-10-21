@@ -10,6 +10,9 @@ import com.aarogya.repository.IdempotencyRecordRepository;
 import com.aarogya.repository.InvoiceRepository;
 import com.aarogya.repository.PatientRepository;
 import com.aarogya.repository.PaymentRepository;
+import com.aarogya.repository.AppointmentRepository;
+import com.aarogya.repository.DoctorRepository;
+import com.aarogya.model.DoctorDocument;
 import com.aarogya.security.UserPrincipal;
 import com.aarogya.systemdesign.id.UniqueIdGeneratorService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -33,6 +36,8 @@ public class BillingService {
     private final MongoTemplate mongoTemplate;
     private final UniqueIdGeneratorService idGenerator;
     private final AuditService auditService;
+    private final AppointmentRepository appointmentRepository;
+    private final DoctorRepository doctorRepository;
     private final ObjectMapper objectMapper = new ObjectMapper()
             .registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule())
             .disable(com.fasterxml.jackson.databind.SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
@@ -44,7 +49,9 @@ public class BillingService {
             IdempotencyRecordRepository idempotencyRepository,
             MongoTemplate mongoTemplate,
             UniqueIdGeneratorService idGenerator,
-            AuditService auditService) {
+            AuditService auditService,
+            AppointmentRepository appointmentRepository,
+            DoctorRepository doctorRepository) {
         this.invoiceRepository = invoiceRepository;
         this.paymentRepository = paymentRepository;
         this.patientRepository = patientRepository;
@@ -52,19 +59,26 @@ public class BillingService {
         this.mongoTemplate = mongoTemplate;
         this.idGenerator = idGenerator;
         this.auditService = auditService;
+        this.appointmentRepository = appointmentRepository;
+        this.doctorRepository = doctorRepository;
     }
 
     public BillingDtos.InvoiceResponse createInvoice(BillingDtos.CreateInvoiceRequest req, UserPrincipal principal) {
         double subtotal = 0.0;
         List<InvoiceDocument.InvoiceItem> items = new ArrayList<>();
         for (BillingDtos.InvoiceItemDto item : req.items()) {
-            double total = item.unitPrice() * item.quantity();
+            double unitPrice = item.unitPrice();
+            if ("CONSULTATION".equalsIgnoreCase(item.itemType()) && unitPrice <= 0.0 && req.appointmentId() != null) {
+                unitPrice = resolveConsultationFeeForAppointment(req.appointmentId());
+            }
+            int quantity = item.quantity() > 0 ? item.quantity() : 1;
+            double total = unitPrice * quantity;
             subtotal += total;
             items.add(new InvoiceDocument.InvoiceItem(
                     item.description(),
                     item.itemType(),
-                    item.unitPrice(),
-                    item.quantity(),
+                    unitPrice,
+                    quantity,
                     total
             ));
         }
@@ -139,37 +153,43 @@ public class BillingService {
                 ? headerIdempotencyKey.trim()
                 : "pay-key-" + req.invoiceId();
 
-        // 1. Idempotency Check: prevent duplicate simulated payments
+        // 1. Invoice Existence & Ownership Check (checked first to prevent unauthorized idempotency snooping)
+        InvoiceDocument invoice = invoiceRepository.findById(req.invoiceId())
+                .orElseThrow(() -> new Exceptions.ResourceNotFoundException("Invoice not found with id: " + req.invoiceId()));
+
+        if (principal != null && "patient".equalsIgnoreCase(principal.getRole())) {
+            Optional<PatientDocument> p = patientRepository.findByUserId(principal.getId());
+            if (p.isEmpty() || !p.get().getId().equals(invoice.getPatientId())) {
+                throw new Exceptions.ForbiddenException("Access denied: You may only settle your own invoices.");
+            }
+        }
+
+        // 2. Idempotency Check: if request was already processed with this key, return original result
         Optional<IdempotencyRecordDocument> existing = idempotencyRepository.findByIdempotencyKey(effectiveKey);
         if (existing.isPresent()) {
             try {
-                return objectMapper.readValue(existing.get().getResponsePayload(), BillingDtos.PaymentResponse.class);
+                BillingDtos.PaymentResponse cached = objectMapper.readValue(existing.get().getResponsePayload(), BillingDtos.PaymentResponse.class);
+                if (cached.invoiceId().equals(req.invoiceId())) {
+                    return cached;
+                }
             } catch (Exception ignored) {}
         }
 
         Optional<PaymentDocument> existingPayment = paymentRepository.findByIdempotencyKey(effectiveKey);
         if (existingPayment.isPresent()) {
             PaymentDocument p = existingPayment.get();
-            return new BillingDtos.PaymentResponse(
-                p.getId(),
-                p.getInvoiceId(),
-                p.getAmount(),
-                p.getPaymentMethod(),
-                p.getTransactionReference(),
-                p.getStatus(),
-                p.getCreatedAt()
-            );
-        }
-
-        InvoiceDocument invoice = invoiceRepository.findById(req.invoiceId())
-                .orElseThrow(() -> new Exceptions.ResourceNotFoundException("Invoice not found with id: " + req.invoiceId()));
-
-        // Invariant 1: Ownership Check (if patient)
-        if (principal != null && "patient".equalsIgnoreCase(principal.getRole())) {
-            Optional<PatientDocument> p = patientRepository.findByUserId(principal.getId());
-            if (p.isEmpty() || !p.get().getId().equals(invoice.getPatientId())) {
-                throw new Exceptions.ForbiddenException("Access denied: You may only settle your own invoices.");
+            if (p.getInvoiceId().equals(req.invoiceId())) {
+                return new BillingDtos.PaymentResponse(
+                    p.getId(),
+                    p.getInvoiceId(),
+                    p.getAmount(),
+                    p.getPaymentMethod(),
+                    p.getTransactionReference(),
+                    p.getStatus(),
+                    p.getCreatedAt()
+                );
             }
+            throw new Exceptions.ConflictException("Idempotency key has already been used for another transaction.");
         }
 
         // Invariant 2: Validate payment amount against net payable
@@ -276,5 +296,13 @@ public class BillingService {
                 itemDtos,
                 doc.getCreatedAt()
         );
+    }
+
+    private double resolveConsultationFeeForAppointment(String appointmentId) {
+        if (appointmentId == null || appointmentId.isBlank()) return 800.0;
+        return appointmentRepository.findById(appointmentId)
+                .flatMap(apt -> doctorRepository.findById(apt.getDoctorId()))
+                .map(DoctorDocument::getConsultationFee)
+                .orElse(800.0);
     }
 }

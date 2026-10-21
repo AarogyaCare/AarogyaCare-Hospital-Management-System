@@ -82,7 +82,7 @@ export default function Header() {
     <>
       <div className="bg-[#001730] text-slate-300 text-[11px] py-1.5 px-4 md:px-8 border-b border-slate-800">
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
-          <span className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-teal-400" />Grems Road Clinical Campus, Thousand Lights, Chennai - 600006</span>
+          <span className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-teal-400" />Medora Clinical Campus, Thousand Lights, Chennai - 600006</span>
           <div className="flex items-center gap-4">
             <a href="tel:1066" className="flex items-center gap-1.5 text-rose-300 hover:text-rose-200 font-semibold transition"><PhoneCall className="w-3.5 h-3.5 text-rose-400" />24/7 Trauma Emergency: 1066 / +91 44 2829 0000</a>
             <span className="hidden sm:flex items-center gap-1 border-l border-slate-700 pl-3 text-slate-400"><Award className="w-3.5 h-3.5 text-amber-400" />NABH &amp; JCI Accredited</span>
@@ -92,12 +92,18 @@ export default function Header() {
 
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 md:px-8 min-h-[4.5rem] flex items-center justify-between gap-3">
-          <Link to="/" className="flex items-center gap-3 group shrink-0" aria-label="AarogyaCare home">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#002043] to-[#178B8B] flex items-center justify-center text-white shadow-md group-hover:scale-105 transition-transform"><Activity className="w-6 h-6" /></div>
-            <div>
-              <div className="flex items-center gap-2"><span className="text-lg font-bold tracking-tight text-[#002043]">Aarogya<span className="text-[#178B8B]">Care</span></span><span className="text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded bg-teal-50 text-[#178B8B] border border-teal-200">Campus</span></div>
-              <p className="text-[10px] font-medium text-slate-500 uppercase">Grems Road • Chennai</p>
-            </div>
+          <Link to="/" className="flex items-center gap-2 group shrink-0" aria-label="Medora home">
+
+            <img
+
+              src="/medora-logo.png"
+
+              alt="Medora"
+
+              className="h-10 object-contain group-hover:scale-105 transition-transform"
+
+            />
+
           </Link>
 
           <nav aria-label="Main navigation" className="hidden xl:flex items-center gap-1 text-sm font-medium text-slate-700">

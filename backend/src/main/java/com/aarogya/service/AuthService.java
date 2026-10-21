@@ -14,6 +14,8 @@ import com.aarogya.systemdesign.id.UniqueIdGeneratorService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -87,13 +89,27 @@ public class AuthService {
         );
         userRepository.save(user);
 
+        // DEF-02: Validate and persist patient date of birth; reject invalid or future dates
+        String validatedDob = null;
+        if (request.dateOfBirth() != null && !request.dateOfBirth().isBlank()) {
+            try {
+                LocalDate parsed = LocalDate.parse(request.dateOfBirth().trim());
+                if (parsed.isAfter(LocalDate.now())) {
+                    throw new Exceptions.BadRequestException("Date of birth cannot be in the future.");
+                }
+                validatedDob = parsed.toString();
+            } catch (DateTimeParseException ex) {
+                throw new Exceptions.BadRequestException("Invalid date of birth format: " + request.dateOfBirth() + ". Expected ISO-8601 date (YYYY-MM-DD).");
+            }
+        }
+
         // Provision patient medical record profile with full non-truncated Snowflake UHID
         String uhid = "AC-" + 2026 + "-" + Math.abs(idGenerator.nextSnowflakeId());
         PatientDocument patient = new PatientDocument(
                 UUID.randomUUID().toString(),
                 userId,
                 uhid,
-                "1990-01-01",
+                validatedDob,
                 "Other",
                 "O+"
         );
@@ -189,7 +205,8 @@ public class AuthService {
                     d.getExperienceYears(),
                     d.getRoomNumber(),
                     d.getRating(),
-                    d.getSpecializations()
+                    d.getSpecializations(),
+                    d.getConsultationFee()
             );
         }
 

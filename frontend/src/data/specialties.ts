@@ -16,7 +16,7 @@ export const specialtiesData: Specialty[] = [
     id: 'cardiology',
     name: 'Cardiology & Cardiac Surgery',
     shortDesc: 'Advanced coronary interventions, electrophysiology, and comprehensive heart care.',
-    fullDesc: 'The Aarogya Heart Centre at Grems Road provides 24/7 primary angioplasty, hybrid catheterization laboratories, complex bypass surgeries, and heart failure management with cutting-edge hemodynamic monitoring.',
+    fullDesc: 'The Aarogya Heart Centre at Medora provides 24/7 primary angioplasty, hybrid catheterization laboratories, complex bypass surgeries, and heart failure management with cutting-edge hemodynamic monitoring.',
     headOfDept: 'Dr. V. Ramanathan, MD, DM (Cardiology), FACC',
     iconName: 'HeartPulse',
     doctorCount: 8,

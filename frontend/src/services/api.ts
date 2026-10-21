@@ -1,4 +1,4 @@
-export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8003').replace(/\/$/, '');
+export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000').replace(/\/$/, '');
 
 export class ApiError extends Error {
   constructor(message: string, public status: number) {
@@ -240,6 +240,9 @@ export const api = {
   myPrescriptions: () => apiRequest<PrescriptionDto[]>('/api/v1/patients/me/prescriptions'),
   myInvoices: () => apiRequest<InvoiceDto[]>('/api/v1/patients/me/invoices'),
   myLabOrders: () => apiRequest<any[]>('/api/v1/patients/me/lab-orders'),
+  myProfile: () => apiRequest<PatientDto>('/api/v1/patients/me/profile'),
+  updateMyProfile: (payload: Partial<CreatePatientDto>) => apiRequest<PatientDto>('/api/v1/patients/me/profile', { method: 'PATCH', body: JSON.stringify(payload) }),
+  updatePatientProfile: (id: string, payload: Partial<CreatePatientDto>) => apiRequest<PatientDto>('/api/v1/patients/' + encodeURIComponent(id), { method: 'PATCH', body: JSON.stringify(payload) }),
 
   // Prescriptions & Pharmacy
   allPrescriptions: (status?: string) => apiRequest<PrescriptionDto[]>(`/api/v1/prescriptions${status ? `?status=${encodeURIComponent(status)}` : ''}`),
@@ -266,12 +269,14 @@ export const api = {
   invoices: () => apiRequest<InvoiceDto[]>('/api/v1/billing/invoices'),
   invoice: (id: string) => apiRequest<InvoiceDto>(`/api/v1/billing/invoices/${encodeURIComponent(id)}`),
   createInvoice: (payload: unknown) => apiRequest<InvoiceDto>('/api/v1/billing/invoices', { method: 'POST', body: JSON.stringify(payload) }),
-  payInvoice: (invoiceId: string, amount: number, method: string) =>
-    apiRequest<any>('/api/v1/billing/payments/simulate', {
+  payInvoice: (invoiceId: string, amount: number, method: string, idempotencyKey?: string) => {
+    const key = idempotencyKey || crypto.randomUUID();
+    return apiRequest<any>('/api/v1/billing/payments/simulate', {
       method: 'POST',
-      headers: { 'Idempotency-Key': crypto.randomUUID() },
-      body: JSON.stringify({ invoice_id: invoiceId, amount, payment_method: method, idempotency_key: crypto.randomUUID() })
-    }),
+      headers: { 'Idempotency-Key': key },
+      body: JSON.stringify({ invoice_id: invoiceId, amount, payment_method: method, idempotency_key: key })
+    });
+  },
 
   // Lab Orders
   labOrders: (status?: string) => apiRequest<any[]>(`/api/v1/lab/orders${status ? `?status=${encodeURIComponent(status)}` : ''}`),

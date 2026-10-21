@@ -24,10 +24,15 @@ public class DoctorDocument {
     private String roomNumber;
     private double rating = 4.8;
     private List<String> specializations = new ArrayList<>();
+    private double consultationFee = 800.0;
 
     public DoctorDocument() {}
 
     public DoctorDocument(String id, String userId, String departmentId, String qualification, int experienceYears, String roomNumber, double rating, List<String> specializations) {
+        this(id, userId, departmentId, qualification, experienceYears, roomNumber, rating, specializations, 800.0);
+    }
+
+    public DoctorDocument(String id, String userId, String departmentId, String qualification, int experienceYears, String roomNumber, double rating, List<String> specializations, double consultationFee) {
         this.id = id;
         this.userId = userId;
         this.departmentId = departmentId;
@@ -36,6 +41,7 @@ public class DoctorDocument {
         this.roomNumber = roomNumber;
         this.rating = rating;
         this.specializations = specializations != null ? specializations : new ArrayList<>();
+        this.consultationFee = consultationFee > 0.0 ? consultationFee : 800.0;
     }
 
     public String getId() { return id; }
@@ -61,4 +67,7 @@ public class DoctorDocument {
 
     public List<String> getSpecializations() { return specializations; }
     public void setSpecializations(List<String> specializations) { this.specializations = specializations; }
+
+    public double getConsultationFee() { return consultationFee; }
+    public void setConsultationFee(double consultationFee) { this.consultationFee = consultationFee; }
 }

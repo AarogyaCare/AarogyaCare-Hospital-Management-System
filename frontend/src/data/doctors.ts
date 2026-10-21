@@ -40,7 +40,7 @@ export const doctors: Doctor[] = [
     availability: 'Mon - Sat (09:00 AM - 01:00 PM)',
     availableDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
     timeSlots: ['09:00 AM', '09:30 AM', '10:00 AM', '11:15 AM', '12:00 PM', '12:30 PM'],
-    bio: 'Dr. V. Ramanathan has performed over 8,500 complex coronary angioplasties, bifurcation stenting, and transcatheter aortic valve replacements (TAVR). Leading the Grems Road campus cardiac response team.',
+    bio: 'Dr. V. Ramanathan has performed over 8,500 complex coronary angioplasties, bifurcation stenting, and transcatheter aortic valve replacements (TAVR). Leading the Medora campus cardiac response team.',
     education: ['DM Cardiology - Madras Medical College, Chennai', 'MD General Medicine - Stanley Medical College', 'Fellowship in Interventional Cardiology - Cleveland Clinic, USA'],
     awards: ['Tamil Nadu State Best Doctor Award (2022)', 'Life Member, Cardiological Society of India', 'Outstanding Clinical Excellence Medal (2020)']
   },
@@ -58,7 +58,7 @@ export const doctors: Doctor[] = [
     languages: ['English', 'Tamil', 'Telugu'],
     consultationFee: 1400,
     opdRoom: 'OPD Suite 310, Neuro Wing',
-    imageUrl: 'https://images.unsplash.com/photo-1594824813576-59b152d11e5a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=400',
+    imageUrl: 'https://images.unsplash.com/photo-1527613426441-4da17471b66d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=400',
     availability: 'Mon - Fri (10:00 AM - 03:00 PM)',
     availableDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
     timeSlots: ['10:00 AM', '10:45 AM', '11:30 AM', '01:30 PM', '02:15 PM'],

@@ -19,7 +19,7 @@ export default function AccountProfile() {
       <header>
         <p className="text-xs font-bold uppercase text-teal-700">Account</p>
         <h1 className="text-3xl font-extrabold text-[#002043] mt-1">My Profile</h1>
-        <p className="text-sm text-slate-600 mt-2">Profile information verified by Aarogya Care.</p>
+        <p className="text-sm text-slate-600 mt-2">Profile information verified by Medora.</p>
       </header>
       <dl className="bg-white border border-slate-200 rounded-2xl divide-y divide-slate-100">
         {fields.map((field) => <div key={field.label} className="grid sm:grid-cols-[12rem_1fr] gap-1 px-5 py-4">

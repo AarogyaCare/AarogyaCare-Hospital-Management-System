@@ -1,16 +1,19 @@
 import { useState, useEffect } from 'react';
 import {
   Pill, AlertTriangle, CheckCircle2, Search,
-  Package, RefreshCw, Barcode, ShieldCheck, ArrowRight, Plus, AlertCircle
+  Package, RefreshCw, Barcode, ShieldCheck, ArrowRight, Plus, AlertCircle, Printer
 } from 'lucide-react';
 import { api, InventoryItemDto, PrescriptionDto } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
+import PrescriptionDispensingSlipModal from '../../components/PrescriptionDispensingSlipModal';
 
 export default function PharmacyInventory() {
   const { user } = useAuth();
   const [inventory, setInventory] = useState<InventoryItemDto[]>([]);
   const [prescriptions, setPrescriptions] = useState<PrescriptionDto[]>([]);
   const [search, setSearch] = useState('');
+  const [rxSearch, setRxSearch] = useState('');
+  const [selectedSlipRx, setSelectedSlipRx] = useState<PrescriptionDto | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [toast, setToast] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [activeTab, setActiveTab] = useState<'all' | 'PENDING' | 'DISPENSED'>('all');
@@ -84,8 +87,22 @@ export default function PharmacyInventory() {
   );
 
   const filteredPrescriptions = prescriptions.filter((rx) => {
-    if (activeTab === 'all') return true;
-    return String(rx.status).toUpperCase() === activeTab;
+    const statusUpper = String(rx.status).toUpperCase();
+    if (activeTab === 'PENDING') {
+      if (statusUpper !== 'PENDING' && statusUpper !== 'ISSUED' && statusUpper !== 'PARTIALLY_DISPENSED') {
+        return false;
+      }
+    } else if (activeTab === 'DISPENSED') {
+      if (statusUpper !== 'DISPENSED') return false;
+    }
+
+    if (!rxSearch.trim()) return true;
+    const q = rxSearch.toLowerCase();
+    const rxNo = (rx.prescription_number || '').toLowerCase();
+    const patId = (rx.patient_id || '').toLowerCase();
+    const docName = (rx.doctor_name || '').toLowerCase();
+    const medMatch = rx.items?.some((it) => it.medicine_name.toLowerCase().includes(q));
+    return rxNo.includes(q) || patId.includes(q) || docName.includes(q) || Boolean(medMatch);
   });
 
   const lowStockCount = inventory.filter((i) => i.current_stock <= i.minimum_threshold).length;
@@ -171,10 +188,22 @@ export default function PharmacyInventory() {
                     activeTab === tab ? 'bg-[#002043] text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                   }`}
                 >
-                  {tab === 'all' ? 'All' : tab}
+                  {tab === 'all' ? 'All' : tab === 'PENDING' ? 'Awaiting' : 'Dispensed'}
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Rx Search Bar */}
+          <div className="relative">
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={rxSearch}
+              onChange={(e) => setRxSearch(e.target.value)}
+              placeholder="Search Rx #, patient ID, doctor, drug..."
+              className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-[#002043]"
+            />
           </div>
 
           {isLoading ? (
@@ -237,10 +266,20 @@ export default function PharmacyInventory() {
                           <span>{isDispensing === rx.id ? 'Dispensing...' : 'Verify & Dispense'}</span>
                         </button>
                       ) : (
-                        <span className="text-emerald-700 font-bold text-[11px] flex items-center gap-1">
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                          <span>Dispensed</span>
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-emerald-700 font-bold text-[11px] flex items-center gap-1">
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>Dispensed</span>
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedSlipRx(rx)}
+                            className="px-2.5 py-1 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-lg text-[10px] font-bold flex items-center gap-1 transition"
+                          >
+                            <Printer className="w-3 h-3 text-teal-600" />
+                            <span>Slip</span>
+                          </button>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -405,6 +444,14 @@ export default function PharmacyInventory() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Prescription Dispensing Slip Modal */}
+      {selectedSlipRx && (
+        <PrescriptionDispensingSlipModal
+          prescription={selectedSlipRx}
+          onClose={() => setSelectedSlipRx(null)}
+        />
       )}
     </div>
   );

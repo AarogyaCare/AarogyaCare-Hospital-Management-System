@@ -36,7 +36,7 @@ export default function Specialties() {
       {/* Header */}
       <div className="bg-gradient-to-r from-[#002043] to-[#17365d] text-white p-8 md:p-12 rounded-3xl shadow-xl">
         <span className="text-xs font-bold uppercase tracking-wider text-teal-300 bg-teal-500/20 px-3 py-1 rounded-full border border-teal-400/30">
-          Aarogya Care • Grems Road Campus
+          Medora • Medora Campus
         </span>
         <h1 className="text-3xl md:text-5xl font-extrabold mt-3 tracking-tight">
           Clinical Specialties & Centers

@@ -10,7 +10,7 @@ import java.time.Instant;
 
 @Document(collection = "appointments")
 @CompoundIndexes({
-    @CompoundIndex(name = "doctor_slot_date_unique", def = "{'doctorId': 1, 'slotId': 1, 'appointmentDate': 1}", unique = true, partialFilter = "{'appointmentDate': {'$type': 'string'}}")
+    @CompoundIndex(name = "doctor_slot_date_unique", def = "{'doctorId': 1, 'slotId': 1, 'appointmentDate': 1}", unique = true, partialFilter = "{'$or': [{'status': {'$eq': 'CONFIRMED'}}, {'status': {'$eq': 'SCHEDULED'}}, {'status': {'$eq': 'COMPLETED'}}, {'status': {'$eq': 'NO_SHOW'}}], 'appointmentDate': {'$type': 'string'}}")
 })
 public class AppointmentDocument {
 

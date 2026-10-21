@@ -62,7 +62,7 @@ export default function RateLimiterLab() {
             API Gateway Rate Limiter Simulator
           </h1>
           <p className="text-slate-300 text-xs md:text-sm mt-1 max-w-xl">
-            Simulates distributed API rate limiting algorithms protecting Aarogya Care clinical endpoints against denial of service and traffic spikes.
+            Simulates distributed API rate limiting algorithms protecting Medora clinical endpoints against denial of service and traffic spikes.
           </p>
         </div>
 

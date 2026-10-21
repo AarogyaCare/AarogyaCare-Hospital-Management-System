@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.*;
 
 @Service
@@ -377,11 +378,24 @@ public class PatientRecordService {
         } while (patientRepository.existsByUhid(uhid) && attempts < 20);
         String patientId = "pat-" + UUID.randomUUID().toString().substring(0, 8);
 
+        String validatedDob = null;
+        if (req.dateOfBirth() != null && !req.dateOfBirth().isBlank()) {
+            try {
+                LocalDate parsed = LocalDate.parse(req.dateOfBirth().trim());
+                if (parsed.isAfter(LocalDate.now())) {
+                    throw new Exceptions.BadRequestException("Date of birth cannot be in the future.");
+                }
+                validatedDob = parsed.toString();
+            } catch (DateTimeParseException ex) {
+                throw new Exceptions.BadRequestException("Invalid date of birth format: " + req.dateOfBirth() + ". Expected ISO-8601 date (YYYY-MM-DD).");
+            }
+        }
+
         PatientDocument patient = new PatientDocument(
                 patientId,
                 user.getId(),
                 uhid,
-                req.dateOfBirth() != null && !req.dateOfBirth().isBlank() ? req.dateOfBirth() : "1990-01-01",
+                validatedDob,
                 req.gender() != null && !req.gender().isBlank() ? req.gender() : "Other",
                 req.bloodGroup() != null && !req.bloodGroup().isBlank() ? req.bloodGroup() : "Unknown"
         );
@@ -400,6 +414,77 @@ public class PatientRecordService {
                 "Patient",
                 patient.getId(),
                 "Registered new patient " + patientName + " with UHID " + uhid
+        );
+
+        return mapPatientToDto(patient);
+    }
+
+    public PatientDtos.PatientResponse updatePatientProfile(String patientIdOrUhid, PatientDtos.UpdatePatientProfileRequest req, UserPrincipal principal) {
+        String patientId = resolvePatientId(patientIdOrUhid);
+        PatientDocument patient = patientRepository.findById(patientId)
+                .or(() -> patientRepository.findByUhid(patientIdOrUhid))
+                .orElseThrow(() -> new Exceptions.ResourceNotFoundException("Patient not found: " + patientIdOrUhid));
+
+        if (req.dateOfBirth() != null && !req.dateOfBirth().isBlank()) {
+            try {
+                LocalDate parsed = LocalDate.parse(req.dateOfBirth().trim());
+                if (parsed.isAfter(LocalDate.now())) {
+                    throw new Exceptions.BadRequestException("Date of birth cannot be in the future.");
+                }
+                patient.setDateOfBirth(parsed.toString());
+            } catch (DateTimeParseException ex) {
+                throw new Exceptions.BadRequestException("Invalid date of birth format: " + req.dateOfBirth() + ". Expected ISO-8601 date (YYYY-MM-DD).");
+            }
+        }
+
+        if (req.gender() != null && !req.gender().isBlank()) {
+            patient.setGender(req.gender().trim());
+        }
+        if (req.bloodGroup() != null && !req.bloodGroup().isBlank()) {
+            patient.setBloodGroup(req.bloodGroup().trim());
+        }
+        if (req.address() != null) {
+            patient.setAddress(req.address().trim());
+        }
+        if (req.allergies() != null) {
+            patient.setAllergies(req.allergies().trim());
+        }
+        if (req.chronicConditions() != null) {
+            patient.setChronicConditions(req.chronicConditions().trim());
+        }
+        if (req.emergencyContactName() != null) {
+            patient.setEmergencyContactName(req.emergencyContactName().trim());
+        }
+        if (req.emergencyContactPhone() != null) {
+            patient.setEmergencyContactPhone(req.emergencyContactPhone().trim());
+        }
+
+        if (patient.getUserId() != null) {
+            userRepository.findById(patient.getUserId()).ifPresent(user -> {
+                boolean userModified = false;
+                if (req.name() != null && !req.name().isBlank()) {
+                    user.setFullName(req.name().trim());
+                    userModified = true;
+                }
+                if (req.phone() != null && !req.phone().isBlank()) {
+                    user.setPhone(req.phone().trim());
+                    userModified = true;
+                }
+                if (userModified) {
+                    userRepository.save(user);
+                }
+            });
+        }
+
+        patientRepository.save(patient);
+
+        auditService.recordEvent(
+                principal != null ? principal.getId() : "system",
+                principal != null ? principal.getUsername() : "system",
+                "UPDATE_PATIENT_PROFILE",
+                "Patient",
+                patient.getId(),
+                "Updated profile for patient " + patient.getId()
         );
 
         return mapPatientToDto(patient);

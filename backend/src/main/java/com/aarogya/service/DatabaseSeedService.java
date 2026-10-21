@@ -132,6 +132,7 @@ public class DatabaseSeedService {
                 existingBilling.setRole("billing_staff");
                 userRepository.save(existingBilling);
             }
+            ensureDoctorConsultationFees();
             return;
         }
 
@@ -152,7 +153,8 @@ public class DatabaseSeedService {
             18,
             "OPD-102",
             4.9,
-            List.of("Interventional Cardiology", "Coronary Angioplasty", "Arrhythmia")
+            List.of("Interventional Cardiology", "Coronary Angioplasty", "Arrhythmia"),
+            1200.0
         );
         doctorRepository.save(doc1);
         seedSlotsForDoctor("doc-1", "OPD-102");
@@ -168,7 +170,8 @@ public class DatabaseSeedService {
             14,
             "OPD-204",
             4.8,
-            List.of("Stroke Intervention", "Neuropathy", "Epileptology")
+            List.of("Stroke Intervention", "Neuropathy", "Epileptology"),
+            1400.0
         );
         doctorRepository.save(doc2);
         seedSlotsForDoctor("doc-2", "OPD-204");
@@ -184,7 +187,8 @@ public class DatabaseSeedService {
             16,
             "OPD-301",
             4.9,
-            List.of("Robotic Joint Replacement", "Spine Decompression", "Trauma")
+            List.of("Robotic Joint Replacement", "Spine Decompression", "Trauma"),
+            1100.0
         );
         doctorRepository.save(doc3);
         seedSlotsForDoctor("doc-3", "OPD-301");
@@ -200,7 +204,8 @@ public class DatabaseSeedService {
             11,
             "OPD-105",
             4.7,
-            List.of("Neonatal Critical Care", "Pediatric Allergy", "Immunology")
+            List.of("Neonatal Critical Care", "Pediatric Allergy", "Immunology"),
+            1000.0
         );
         doctorRepository.save(doc4);
         seedSlotsForDoctor("doc-4", "OPD-105");
@@ -458,5 +463,27 @@ public class DatabaseSeedService {
             new EmergencyRequestDocument("em-3", "Deepa Sundar", null, "+91 98765 43222", "GREEN", "Superficial glass laceration right forearm, active bleeding controlled", "BP: 118/76, HR: 74, SpO2: 99%")
         );
         emergencyRepository.saveAll(list);
+    }
+    private void ensureDoctorConsultationFees() {
+        Map<String, Double> knownFees = Map.of(
+            "doc-1", 1200.0,
+            "doc-2", 1400.0,
+            "doc-3", 1100.0,
+            "doc-4", 1000.0
+        );
+        for (Map.Entry<String, Double> entry : knownFees.entrySet()) {
+            doctorRepository.findById(entry.getKey()).ifPresent(doc -> {
+                if (Math.abs(doc.getConsultationFee() - entry.getValue()) > 0.001) {
+                    doc.setConsultationFee(entry.getValue());
+                    doctorRepository.save(doc);
+                }
+            });
+        }
+        for (DoctorDocument doc : doctorRepository.findAll()) {
+            if (!knownFees.containsKey(doc.getId()) && doc.getConsultationFee() <= 0.0) {
+                doc.setConsultationFee(800.0);
+                doctorRepository.save(doc);
+            }
+        }
     }
 }

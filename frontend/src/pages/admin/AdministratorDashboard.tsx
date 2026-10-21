@@ -237,7 +237,7 @@ export default function AdministratorDashboard() {
           </div>
 
           <div className="p-4 bg-slate-100 rounded-2xl text-xs text-slate-600 flex items-center justify-between">
-            <span>Aarogya Care Central Campus: Grems Road, Chennai</span>
+            <span>Medora Central Campus: Medora, Chennai</span>
             <span className="font-mono text-emerald-700 font-bold">API Status: Connected</span>
           </div>
         </div>

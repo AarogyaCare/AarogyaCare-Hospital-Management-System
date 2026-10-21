@@ -22,6 +22,9 @@ export interface AuthUser {
   phone?: string;
   patientId?: string;
   uhid?: string;
+  dateOfBirth?: string;
+  gender?: string;
+  bloodGroup?: string;
   doctorProfile?: DoctorProfile;
 }
 
@@ -29,6 +32,7 @@ interface AuthContextProps {
   user: AuthUser | null;
   login: (accessToken: string) => Promise<AuthUser>;
   logout: () => Promise<void>;
+  refreshUser: () => Promise<AuthUser | null>;
   token: string | null;
   loading: boolean;
 }
@@ -48,6 +52,9 @@ const toAuthUser = (profile: any): AuthUser => {
     phone: profile.phone ? String(profile.phone) : undefined,
     patientId: profile.patient_profile?.id ? String(profile.patient_profile.id) : undefined,
     uhid: profile.patient_profile?.uhid ? String(profile.patient_profile.uhid) : undefined,
+    dateOfBirth: profile.patient_profile?.date_of_birth ? String(profile.patient_profile.date_of_birth) : undefined,
+    gender: profile.patient_profile?.gender ? String(profile.patient_profile.gender) : undefined,
+    bloodGroup: profile.patient_profile?.blood_group ? String(profile.patient_profile.blood_group) : undefined,
     role: role as UserRole,
     doctorProfile: profile.doctor_profile ? {
       id: String(profile.doctor_profile.id || ''),
@@ -127,6 +134,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const refreshUser = async (): Promise<AuthUser | null> => {
+    const savedToken = localStorage.getItem(TOKEN_KEY);
+    if (!savedToken) return null;
+    try {
+      const profile = await api.me();
+      const refreshedUser = toAuthUser(profile);
+      setUser(refreshedUser);
+      localStorage.setItem(USER_KEY, JSON.stringify(refreshedUser));
+      return refreshedUser;
+    } catch {
+      return null;
+    }
+  };
+
   const logout = async () => {
     const logoutRequest = token ? api.logout().catch(() => undefined) : Promise.resolve();
     setUser(null);
@@ -136,7 +157,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     await logoutRequest;
   };
 
-  return <AuthContext.Provider value={{ user, login, logout, token, loading }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ user, login, logout, refreshUser, token, loading }}>{children}</AuthContext.Provider>;
 };
 export const useAuth = (): AuthContextProps => {
   const ctx = useContext(AuthContext);

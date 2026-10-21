@@ -1,5 +1,5 @@
 /**
- * AarogyaCare Clinical Patient Age Calculation Utility
+ * Medora Clinical Patient Age Calculation Utility
  * 
  * Date of Birth (DOB) is the single source of truth for patient age.
  * Accurately calculates completed years, months, and days based on birthday

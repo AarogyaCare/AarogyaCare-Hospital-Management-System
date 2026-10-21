@@ -49,7 +49,7 @@ export default function Doctors() {
             Consult Our Senior Specialists
           </h1>
           <p className="text-slate-300 text-sm mt-1 max-w-xl">
-            Choose from leading department directors, robotic surgeons, and interventional consultants at Grems Road Clinical Campus.
+            Choose from leading department directors, robotic surgeons, and interventional consultants at Medora Clinical Campus.
           </p>
         </div>
 

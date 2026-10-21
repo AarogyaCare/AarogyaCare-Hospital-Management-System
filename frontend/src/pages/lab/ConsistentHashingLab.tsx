@@ -20,7 +20,7 @@ interface HashKey {
 export default function ConsistentHashingLab() {
   const [nodes, setNodes] = useState<ServerNode[]>([
     { id: 'node-a', name: 'Node A (Chennai Central)', angle: 45, color: '#178B8B' },
-    { id: 'node-b', name: 'Node B (Grems Road Primary)', angle: 135, color: '#2563eb' },
+    { id: 'node-b', name: 'Node B (Medora Primary)', angle: 135, color: '#2563eb' },
     { id: 'node-c', name: 'Node C (Disaster Recovery)', angle: 240, color: '#8b5cf6' },
   ]);
 

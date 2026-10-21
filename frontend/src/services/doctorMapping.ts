@@ -24,7 +24,7 @@ export interface HospitalDoctor {
 
 const DOCTOR_AVATARS: Record<string, string> = {
   'doc-1': 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&q=80&w=400',
-  'doc-2': 'https://images.unsplash.com/photo-1594824813589-32212906b3a2?auto=format&fit=crop&q=80&w=400',
+  'doc-2': 'https://images.unsplash.com/photo-1527613426441-4da17471b66d?auto=format&fit=crop&q=80&w=400',
   'doc-3': 'https://images.unsplash.com/photo-1537368910025-700350fe46c7?auto=format&fit=crop&q=80&w=400',
   'doc-4': 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&q=80&w=400',
   'doc-5': 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&q=80&w=400',
@@ -85,7 +85,9 @@ export function mapDoctorResponse(doctor: any): HospitalDoctor {
     availability: String(doctor.availability || 'Monday - Saturday (09:00 AM - 05:00 PM)'),
     specializations: specs.length > 0 ? specs : [dept],
     specialties: specs.length > 0 ? specs : [dept],
-    consultationFee: Number(doctor.consultation_fee) || 800,
+    consultationFee: Number.isFinite(Number(doctor.consultation_fee))
+      ? Number(doctor.consultation_fee)
+      : (Number.isFinite(Number(doctor.consultationFee)) ? Number(doctor.consultationFee) : 0),
     imageUrl: doctor.image_url || doctor.imageUrl || DOCTOR_AVATARS[docId] || 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&q=80&w=400',
   };
 }

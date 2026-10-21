@@ -85,6 +85,10 @@ export default function DoctorClinicalWorkspace() {
   const [quantity, setQuantity] = useState(14);
   const [instructions, setInstructions] = useState('Take with water after meals.');
 
+  // Diagnostic Lab Orders State
+  const [patientLabOrders, setPatientLabOrders] = useState<any[]>([]);
+  const [orderingLabNames, setOrderingLabNames] = useState<Record<string, boolean>>({});
+
   const showToast = (text: string, type: 'success' | 'error' = 'success') => {
     setToastMessage({ text, type });
     setTimeout(() => setToastMessage(null), 4500);
@@ -206,6 +210,14 @@ export default function DoctorClinicalWorkspace() {
       if (key) setSelectedSpecialtyKey(key);
     }
 
+    // Fetch prior lab orders for this patient
+    try {
+      const labs = await api.patientLabOrders(apt.patient_id);
+      setPatientLabOrders(labs);
+    } catch {
+      setPatientLabOrders([]);
+    }
+
     // Fetch prior notes for this appointment
     try {
       const notes = await api.getAppointmentNotes(apt.id);
@@ -242,10 +254,33 @@ export default function DoctorClinicalWorkspace() {
     setTreatmentPlan((prev) => (prev ? `${prev}; ${text}` : text));
   };
 
-  const handleApplyLab = (lab: { name: string; category: string; urgency: string }) => {
-    const labEntry = `Diagnostic Order: ${lab.name} [${lab.category}, ${lab.urgency}]`;
-    setTreatmentPlan((prev) => (prev ? `${prev}; ${labEntry}` : labEntry));
-    showToast(`Added '${lab.name}' to treatment plan orders.`);
+  const handleApplyLab = async (lab: { name: string; category: string; urgency: string; sampleType?: string }) => {
+    if (!selectedAppointment) {
+      showToast('Please select a patient appointment from the queue first.', 'error');
+      return;
+    }
+    if (orderingLabNames[lab.name]) {
+      return;
+    }
+    setOrderingLabNames((prev) => ({ ...prev, [lab.name]: true }));
+    try {
+      const order = await api.createLabOrder({
+        patient_id: selectedAppointment.patient_id,
+        appointment_id: selectedAppointment.id,
+        test_name: lab.name,
+        test_category: lab.category || 'General Diagnostic',
+        sample_type: lab.sampleType || 'Venous Blood',
+        urgency: lab.urgency || 'ROUTINE',
+      });
+      setPatientLabOrders((prev) => [order, ...prev]);
+      const labEntry = `Diagnostic Order #${order.order_number || order.id}: ${lab.name} [${lab.category || 'Diagnostic'}, ${lab.urgency || 'ROUTINE'}]`;
+      setTreatmentPlan((prev) => (prev ? `${prev}\n${labEntry}` : labEntry));
+      showToast(`Created structured lab order for '${lab.name}' (${order.order_number || 'Order logged'}).`);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : `Failed to create lab order for ${lab.name}`, 'error');
+    } finally {
+      setOrderingLabNames((prev) => ({ ...prev, [lab.name]: false }));
+    }
   };
 
   // Load a template Rx item into the manual editor or add directly
@@ -770,23 +805,56 @@ export default function DoctorClinicalWorkspace() {
                   )}
 
                   {activeTemplateTab === 'labs' && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {activeTemplate.diagnosticLabs.map((lab, i) => (
-                        <button
-                          key={i}
-                          type="button"
-                          onClick={() => handleApplyLab(lab)}
-                          className="p-2.5 bg-white border border-slate-200 hover:border-teal-500 hover:bg-teal-50/50 rounded-xl text-left transition flex items-center justify-between gap-2"
-                        >
-                          <div>
-                            <span className="font-bold text-slate-900 block">{lab.name}</span>
-                            <span className="text-[10px] text-slate-500">{lab.category} • {lab.sampleType}</span>
-                          </div>
-                          <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200 shrink-0">
-                            + Order
+                    <div className="space-y-3">
+                      {patientLabOrders.length > 0 && (
+                        <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-teal-800">
+                            Active & Recent Lab Orders for Patient ({patientLabOrders.length})
                           </span>
-                        </button>
-                      ))}
+                          <div className="max-h-36 overflow-y-auto space-y-1.5 text-xs">
+                            {patientLabOrders.map((ord: any) => (
+                              <div key={ord.id} className="p-2 bg-white rounded-lg border border-slate-200 flex items-center justify-between">
+                                <div>
+                                  <span className="font-bold text-slate-900">{ord.test_name}</span>
+                                  <span className="text-[10px] text-slate-500 ml-2 font-mono">{ord.order_number}</span>
+                                  {ord.result_value && (
+                                    <span className="text-[11px] text-teal-700 font-bold ml-2">Result: {ord.result_value} {ord.unit || ''}</span>
+                                  )}
+                                </div>
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                                  ord.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-800' :
+                                  ord.status === 'SAMPLE_COLLECTED' ? 'bg-amber-100 text-amber-800' :
+                                  'bg-indigo-100 text-indigo-800'
+                                }`}>
+                                  {ord.status}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {activeTemplate.diagnosticLabs.map((lab, i) => {
+                          const isOrdering = Boolean(orderingLabNames[lab.name]);
+                          return (
+                            <button
+                              key={i}
+                              type="button"
+                              disabled={isOrdering}
+                              onClick={() => void handleApplyLab(lab)}
+                              className="p-2.5 bg-white border border-slate-200 hover:border-teal-500 hover:bg-teal-50/50 rounded-xl text-left transition flex items-center justify-between gap-2 disabled:opacity-50"
+                            >
+                              <div>
+                                <span className="font-bold text-slate-900 block">{lab.name}</span>
+                                <span className="text-[10px] text-slate-500">{lab.category} • {lab.sampleType}</span>
+                              </div>
+                              <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200 shrink-0">
+                                {isOrdering ? 'Ordering…' : '+ Order'}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
                   )}
 
