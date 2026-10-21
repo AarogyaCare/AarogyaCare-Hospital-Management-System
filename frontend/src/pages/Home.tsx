@@ -43,7 +43,7 @@ export default function Home() {
           <div className="lg:col-span-7 space-y-6">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-teal-500/10 border border-teal-400/30 text-teal-300 text-xs font-semibold">
               <span className="w-2 h-2 rounded-full bg-teal-400 animate-ping" />
-              <span>Grems Road Clinical Campus, Chennai</span>
+              <span>Medora Clinical Campus, Chennai</span>
             </div>
 
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-[1.15] text-white">
@@ -106,7 +106,7 @@ export default function Home() {
             <div className="relative mx-auto rounded-3xl overflow-hidden shadow-2xl border-2 border-white/20 bg-slate-800">
               <img
                 src="https://images.unsplash.com/photo-1579684385127-1ef15d508118?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=800"
-                alt="Aarogya Care Grems Road Doctor Consultation"
+                alt="Medora Medora Doctor Consultation"
                 className="w-full h-[440px] object-cover object-center"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent" />
@@ -128,14 +128,14 @@ export default function Home() {
                 </span>
               </div>
 
-              {/* Floating card 2: Grems Road Campus Accreditation */}
+              {/* Floating card 2: Medora Campus Accreditation */}
               <div className="absolute bottom-4 left-4 right-4 bg-[#001730]/90 backdrop-blur-md p-4 rounded-2xl border border-white/10 text-white flex items-center justify-between">
                 <div>
                   <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-300">
                     <Award className="w-4 h-4" />
                     <span>JCI & NABH Gold Seal Campus</span>
                   </div>
-                  <p className="text-[11px] text-slate-400 mt-0.5">Grems Road, Thousand Lights, Chennai</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">Medora, Thousand Lights, Chennai</p>
                 </div>
                 <Link
                   to="/doctors"
@@ -182,7 +182,7 @@ export default function Home() {
             },
             {
               title: '24/7 Acute Emergency',
-              desc: 'Grems Road resuscitation unit, trauma & ambulance',
+              desc: 'Medora resuscitation unit, trauma & ambulance',
               path: 'tel:1066',
               icon: PhoneCall,
               bg: 'bg-rose-50 border-rose-200',
@@ -301,7 +301,7 @@ export default function Home() {
                 Distinguished Medical Faculty
               </h2>
               <p className="text-slate-600 text-sm mt-1">
-                Leading researchers, clinical innovators, and experienced surgeons at Grems Road.
+                Leading researchers, clinical innovators, and experienced surgeons at Medora.
               </p>
             </div>
 
@@ -395,9 +395,9 @@ export default function Home() {
               <MapPin className="w-4 h-4" />
               <span>Campus Location</span>
             </div>
-            <h3 className="text-2xl font-bold">Grems Road Clinical Campus</h3>
+            <h3 className="text-2xl font-bold">Medora Clinical Campus</h3>
             <p className="text-slate-300 text-xs mt-3 leading-relaxed">
-              No. 21 Grems Road, Off Anna Salai, Thousand Lights, Chennai, Tamil Nadu 600006. Located 4.2 km from Chennai Central Railway Station.
+              No. 21 Medora, Off Anna Salai, Thousand Lights, Chennai, Tamil Nadu 600006. Located 4.2 km from Chennai Central Railway Station.
             </p>
             <div className="mt-6 flex flex-col gap-2 text-xs">
               <span className="text-slate-300">OPD Registration: 07:30 AM - 08:00 PM</span>
@@ -436,7 +436,7 @@ export default function Home() {
               <span className="text-xs font-semibold text-amber-300">System Design Laboratory</span>
               <h4 className="text-lg font-bold text-white mt-1">Hospital Software Engineering</h4>
               <p className="text-xs text-slate-300 mt-2 leading-relaxed">
-                Explore the distributed architecture powering Aarogya Care: Rate Limiters, Consistent Hashing, LSM Key-Value store, and Unique Snowflake ID generators.
+                Explore the distributed architecture powering Medora: Rate Limiters, Consistent Hashing, LSM Key-Value store, and Unique Snowflake ID generators.
               </p>
             </div>
             <Link

@@ -186,7 +186,7 @@ export default function ReceptionFrontDesk() {
         caller_name: 'Reception Front Desk',
         contact_phone: '+91 44 2829 0000',
         emergency_type: 'TRAUMA_CODE_RED',
-        location: 'Grems Road Main Entrance Bay',
+        location: 'Medora Main Entrance Bay',
         severity_level: 'CRITICAL',
         notes: 'Inbound code red trauma alert triggered by front desk receptionist.'
       });
@@ -404,7 +404,7 @@ export default function ReceptionFrontDesk() {
           {lastIssuedToken && (
             <div className="p-4 bg-teal-50 border border-teal-300 rounded-2xl space-y-2 text-xs animate-fadeIn">
               <div className="flex items-center justify-between border-b border-teal-200 pb-2">
-                <span className="font-bold text-teal-900">Aarogya Care OPD Token Slip</span>
+                <span className="font-bold text-teal-900">Medora OPD Token Slip</span>
                 <span className="font-mono font-black text-lg text-[#002043]">
                   {lastIssuedToken.queue_token || lastIssuedToken.appointment_number}
                 </span>

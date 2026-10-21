@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { 
   CreditCard, CheckCircle2, AlertCircle, Download, 
-  ArrowRight, ShieldCheck, DollarSign, Receipt, QrCode 
+  ArrowRight, ShieldCheck, DollarSign, Receipt, QrCode, Printer
 } from 'lucide-react';
+import TaxInvoiceReceiptModal from '../components/TaxInvoiceReceiptModal';
 export interface BillInvoice {
   id: string;
   invoiceNo: string;
@@ -27,9 +28,11 @@ export default function Billing() {
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'all' | 'Paid' | 'Pending Payment' | 'Claim Processing'>('all');
   const [payingBill, setPayingBill] = useState<BillInvoice | null>(null);
+  const [selectedReceipt, setSelectedReceipt] = useState<BillInvoice | null>(null);
   const [selectedMethod, setSelectedMethod] = useState<'UPI' | 'Card' | 'Insurance'>('UPI');
   const [isProcessing, setIsProcessing] = useState(false);
   const [receiptToast, setReceiptToast] = useState<string | null>(null);
+  const [paymentAttemptKeys, setPaymentAttemptKeys] = useState<Record<string, string>>({});
   useEffect(() => {
     if (!user) return;
     const request = user.role === 'PATIENT'
@@ -54,21 +57,32 @@ export default function Billing() {
   const handlePaySubmit = async () => {
     if (!payingBill) return;
     setIsProcessing(true);
+    const attemptKey = paymentAttemptKeys[payingBill.id] || `pay-key-${payingBill.id}-${crypto.randomUUID()}`;
+    if (!paymentAttemptKeys[payingBill.id]) {
+      setPaymentAttemptKeys((prev) => ({ ...prev, [payingBill.id]: attemptKey }));
+    }
+
     try {
-      const response = await api.payInvoice(payingBill.id, payingBill.patientPayable, selectedMethod);
+      const response = await api.payInvoice(payingBill.id, payingBill.patientPayable, selectedMethod, attemptKey);
       const status = String(response.status || '').toUpperCase() === 'SUCCESS' ? 'Paid' : 'Pending Payment';
       const paymentMode: BillInvoice['paymentMode'] = selectedMethod === 'UPI' ? 'UPI / GPay' : selectedMethod === 'Card' ? 'HDFC Credit Card' : 'Star Health TPA';
       setBills((prev) => prev.map((b) => b.id === payingBill.id ? { ...b, paymentStatus: status as BillInvoice['paymentStatus'], paymentMode } : b));
       setReceiptToast(`Payment simulation response: ${response.status || 'completed'} for ${payingBill.invoiceNo}.`);
       setPayingBill(null);
+      setPaymentAttemptKeys((prev) => {
+        const next = { ...prev };
+        delete next[payingBill.id];
+        return next;
+      });
     } catch (error) {
-      setReceiptToast(`Payment failed: ${error instanceof Error ? error.message : 'Backend error'}`);
-    } finally { setIsProcessing(false); }
+      setReceiptToast(`Payment failed: ${error instanceof Error ? error.message : 'Backend error'}. You may retry safely.`);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
-  const handleDownloadReceipt = (invNo: string) => {
-    setReceiptToast(`Receipt download is not available from the backend for invoice ${invNo}.`);
-    setTimeout(() => setReceiptToast(null), 3500);
+  const handleOpenReceipt = (bill: BillInvoice) => {
+    setSelectedReceipt(bill);
   };
 
   return (
@@ -152,11 +166,11 @@ export default function Billing() {
                   </button>
                 ) : (
                   <button
-                    onClick={() => handleDownloadReceipt(bill.invoiceNo)}
+                    onClick={() => handleOpenReceipt(bill)}
                     className="px-4 py-2 border border-slate-300 text-slate-700 hover:text-[#002043] rounded-xl text-xs font-bold flex items-center gap-1.5 hover:bg-slate-50 transition"
                   >
-                    <Download className="w-3.5 h-3.5" />
-                    <span>Download Tax Invoice</span>
+                    <Printer className="w-3.5 h-3.5 text-teal-600" />
+                    <span>View &amp; Print Tax Invoice</span>
                   </button>
                 )}
               </div>
@@ -260,6 +274,32 @@ export default function Billing() {
             </div>
           </div>
         </div>
+      )}
+      {/* Tax Invoice & Digital Receipt Modal */}
+      {selectedReceipt && (
+        <TaxInvoiceReceiptModal
+          invoice={{
+            invoiceId: selectedReceipt.id,
+            invoiceNumber: selectedReceipt.invoiceNo,
+            patientName: selectedReceipt.patientName,
+            patientUhid: selectedReceipt.uhid,
+            date: selectedReceipt.date,
+            department: selectedReceipt.department,
+            items: selectedReceipt.services.map((s) => ({
+              description: s.name,
+              quantity: s.qty,
+              unitPrice: s.cost,
+              totalPrice: s.cost * s.qty,
+            })),
+            grossTotal: selectedReceipt.grossTotal,
+            discountAmount: selectedReceipt.insuranceCovered,
+            taxAmount: selectedReceipt.taxAmount,
+            netPayable: selectedReceipt.patientPayable,
+            paymentStatus: selectedReceipt.paymentStatus,
+            paymentMode: selectedReceipt.paymentMode || 'Online Payment Gateway',
+          }}
+          onClose={() => setSelectedReceipt(null)}
+        />
       )}
     </div>
   );

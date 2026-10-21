@@ -222,7 +222,7 @@ export default function PatientAppointments() {
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-slate-400">Clinic Suite:</span>
-                  <span className="font-medium text-slate-800">{apt.room} (Grems Road)</span>
+                  <span className="font-medium text-slate-800">{apt.room} (Medora)</span>
                 </div>
                 <div className="flex items-center justify-between pt-1 border-t border-slate-200/60">
                   <span className="text-slate-400">Status:</span>

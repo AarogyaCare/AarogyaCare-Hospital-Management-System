@@ -73,6 +73,7 @@ public class DoctorService {
             map.put("room_number", doc.getRoomNumber());
             map.put("rating", doc.getRating());
             map.put("specializations", doc.getSpecializations());
+            map.put("consultation_fee", doc.getConsultationFee());
             items.add(map);
 
             if (limit > 0 && items.size() >= limit) {
@@ -104,6 +105,7 @@ public class DoctorService {
         map.put("room_number", doc.getRoomNumber());
         map.put("rating", doc.getRating());
         map.put("specializations", doc.getSpecializations());
+        map.put("consultation_fee", doc.getConsultationFee());
         return map;
     }
 

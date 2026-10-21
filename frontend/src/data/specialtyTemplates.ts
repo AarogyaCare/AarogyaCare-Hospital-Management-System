@@ -1,5 +1,5 @@
 /**
- * AarogyaCare Clinical & Electronic Prescription (E-Rx) Specialty Templates
+ * Medora Clinical & Electronic Prescription (E-Rx) Specialty Templates
  * 
  * Modular clinical decision support and prescription templates organized by department/specialty.
  * Unknown specialties fall back gracefully to General Medicine templates.

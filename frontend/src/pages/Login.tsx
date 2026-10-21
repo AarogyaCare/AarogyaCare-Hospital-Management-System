@@ -35,6 +35,7 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
+  const [dob, setDob] = useState('');
   const [authError, setAuthError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { login, user, loading } = useAuth();
@@ -53,7 +54,7 @@ export default function Login() {
     setIsSubmitting(true);
     try {
       const response = isRegistering
-        ? await api.register({ email: email.trim(), password, full_name: fullName.trim(), phone: phone.trim() || undefined })
+        ? await api.register({ email: email.trim(), password, full_name: fullName.trim(), phone: phone.trim() || undefined, date_of_birth: dob ? dob.trim() : undefined })
         : await api.login(email.trim(), password);
       if (!response?.access_token) throw new Error('The server did not return an access token.');
       const verifiedUser = await login(response.access_token);
@@ -80,7 +81,7 @@ export default function Login() {
   return (
     <div className="max-w-4xl mx-auto px-4 py-12 space-y-8">
       <div className="text-center space-y-2">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-50 border border-teal-200 text-teal-800 text-xs font-bold"><ShieldCheck className="w-4 h-4 text-teal-600" />Aarogya Care Authentication</div>
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-50 border border-teal-200 text-teal-800 text-xs font-bold"><ShieldCheck className="w-4 h-4 text-teal-600" />Medora Authentication</div>
         <h1 className="text-3xl sm:text-4xl font-extrabold text-[#002043]">{isRegistering ? 'Create a Patient Account' : 'Sign In to Your Account'}</h1>
         <p className="text-slate-500 text-sm max-w-md mx-auto">{isRegistering ? 'Patient registration creates an account with the hospital service.' : 'Sign in with your registered account. Your access is determined by your verified hospital role.'}</p>
       </div>
@@ -91,6 +92,7 @@ export default function Login() {
           {isRegistering && <>
             <div><label htmlFor="full-name" className="text-sm font-semibold text-slate-700 block mb-1">Full name</label><div className="relative"><User aria-hidden="true" className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" /><input id="full-name" type="text" autoComplete="name" required value={fullName} onChange={(event) => setFullName(event.target.value)} className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#002043]" /></div></div>
             <div><label htmlFor="phone" className="text-sm font-semibold text-slate-700 block mb-1">Phone <span className="font-normal text-slate-500">(optional)</span></label><div className="relative"><Phone aria-hidden="true" className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" /><input id="phone" type="tel" autoComplete="tel" value={phone} onChange={(event) => setPhone(event.target.value)} className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#002043]" /></div></div>
+            <div><label htmlFor="dob" className="text-sm font-semibold text-slate-700 block mb-1">Date of birth</label><input id="dob" type="date" required max={new Date().toISOString().slice(0, 10)} value={dob} onChange={(event) => setDob(event.target.value)} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#002043]" /></div>
           </>}
           <div><label htmlFor="email" className="text-sm font-semibold text-slate-700 block mb-1">Email address</label><div className="relative"><Mail aria-hidden="true" className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" /><input id="email" type="email" autoComplete="email" required value={email} onChange={(event) => setEmail(event.target.value)} className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#002043]" /></div></div>
           <div><label htmlFor="password" className="text-sm font-semibold text-slate-700 block mb-1">Password</label><div className="relative"><Lock aria-hidden="true" className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" /><input id="password" type="password" autoComplete={isRegistering ? 'new-password' : 'current-password'} minLength={isRegistering ? 8 : undefined} required value={password} onChange={(event) => setPassword(event.target.value)} className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#002043]" /></div>{isRegistering && <p className="mt-1 text-xs text-slate-500">Use at least 8 characters.</p>}</div>

@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import {
   CreditCard, DollarSign, Receipt, CheckCircle2,
-  Search, ShieldCheck, Download, Plus, ArrowRight, RefreshCw, AlertCircle, FileText
+  Search, ShieldCheck, Download, Plus, ArrowRight, RefreshCw, AlertCircle, FileText, Printer
 } from 'lucide-react';
 import { api, InvoiceDto, PatientDto } from '../../services/api';
+import { mapDoctorResponse, HospitalDoctor } from '../../services/doctorMapping';
 import { useAuth } from '../../context/AuthContext';
+import TaxInvoiceReceiptModal from '../../components/TaxInvoiceReceiptModal';
 
 const standardBillableServices = [
   { type: 'CONSULTATION', description: 'Senior Consultant OPD Medical Review', price: 800 },
@@ -22,11 +24,14 @@ export default function BillingFinancialDesk() {
   const [toast, setToast] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [activeTab, setActiveTab] = useState<'all' | 'PENDING' | 'PAID'>('all');
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
+  const [selectedReceiptBill, setSelectedReceiptBill] = useState<InvoiceDto | null>(null);
 
   // Invoice creation modal
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [patientIdInput, setPatientIdInput] = useState('');
   const [availablePatients, setAvailablePatients] = useState<PatientDto[]>([]);
+  const [availableDoctors, setAvailableDoctors] = useState<HospitalDoctor[]>([]);
+  const [selectedDoctorId, setSelectedDoctorId] = useState<string>('');
   const [selectedServiceIndex, setSelectedServiceIndex] = useState(0);
   const [customPrice, setCustomPrice] = useState(800);
   const [customQuantity, setCustomQuantity] = useState(1);
@@ -42,15 +47,24 @@ export default function BillingFinancialDesk() {
   const loadInvoices = async () => {
     setIsLoading(true);
     try {
-      const [invData, patData] = await Promise.allSettled([
+      const [invData, patData, docData] = await Promise.allSettled([
         api.invoices(),
-        api.patients()
+        api.patients(),
+        api.doctors()
       ]);
       if (invData.status === 'fulfilled') setBills(invData.value);
       if (patData.status === 'fulfilled') {
         setAvailablePatients(patData.value);
         if (patData.value.length > 0 && !patientIdInput) {
           setPatientIdInput(patData.value[0].id);
+        }
+      }
+      if (docData.status === 'fulfilled') {
+        const mappedDocs = docData.value.items.map(mapDoctorResponse);
+        setAvailableDoctors(mappedDocs);
+        if (mappedDocs.length > 0 && !selectedDoctorId) {
+          setSelectedDoctorId(mappedDocs[0].id);
+          setCustomPrice(mappedDocs[0].consultationFee);
         }
       }
     } catch (err) {
@@ -84,13 +98,20 @@ export default function BillingFinancialDesk() {
       return;
     }
     const template = standardBillableServices[selectedServiceIndex];
+    let itemDescription = template.description;
+    if (selectedServiceIndex === 0 && selectedDoctorId) {
+      const matchedDoc = availableDoctors.find((d) => d.id === selectedDoctorId);
+      if (matchedDoc) {
+        itemDescription = `OPD Consultation - ${matchedDoc.name} (${matchedDoc.departmentName || matchedDoc.specialty})`;
+      }
+    }
     setIsCreatingInvoice(true);
     try {
       const created = await api.createInvoice({
         patient_id: patientIdInput.trim(),
         items: [
           {
-            description: template.description,
+            description: itemDescription,
             item_type: template.type,
             unit_price: Number(customPrice),
             quantity: Number(customQuantity)
@@ -315,10 +336,20 @@ export default function BillingFinancialDesk() {
                         </button>
                       </div>
                     ) : (
-                      <span className="text-emerald-700 font-bold text-xs flex items-center gap-1">
-                        <CheckCircle2 className="w-4 h-4" />
-                        <span>Settled &amp; Reconciled</span>
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-emerald-700 font-bold text-xs flex items-center gap-1">
+                          <CheckCircle2 className="w-4 h-4" />
+                          <span>Settled &amp; Reconciled</span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedReceiptBill(bill)}
+                          className="px-2.5 py-1 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-lg font-bold text-xs flex items-center gap-1 transition"
+                        >
+                          <Printer className="w-3.5 h-3.5 text-teal-600" />
+                          <span>Tax Slip</span>
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -373,7 +404,15 @@ export default function BillingFinancialDesk() {
                   onChange={(e) => {
                     const idx = Number(e.target.value);
                     setSelectedServiceIndex(idx);
-                    setCustomPrice(standardBillableServices[idx].price);
+                    if (idx === 0 && availableDoctors.length > 0) {
+                      const curDoc = availableDoctors.find((d) => d.id === selectedDoctorId) || availableDoctors[0];
+                      if (curDoc) {
+                        setSelectedDoctorId(curDoc.id);
+                        setCustomPrice(curDoc.consultationFee);
+                      }
+                    } else {
+                      setCustomPrice(standardBillableServices[idx].price);
+                    }
                   }}
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium"
                 >
@@ -384,6 +423,30 @@ export default function BillingFinancialDesk() {
                   ))}
                 </select>
               </div>
+
+              {selectedServiceIndex === 0 && availableDoctors.length > 0 && (
+                <div>
+                  <label className="text-slate-700 font-semibold block mb-1">Consulting Doctor (Fee Auto-populated)</label>
+                  <select
+                    value={selectedDoctorId}
+                    onChange={(e) => {
+                      const docId = e.target.value;
+                      setSelectedDoctorId(docId);
+                      const matched = availableDoctors.find((d) => d.id === docId);
+                      if (matched && matched.consultationFee > 0) {
+                        setCustomPrice(matched.consultationFee);
+                      }
+                    }}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium"
+                  >
+                    {availableDoctors.map((doc) => (
+                      <option key={doc.id} value={doc.id}>
+                        {doc.name} — {doc.departmentName || doc.specialty} (₹{doc.consultationFee})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -458,6 +521,32 @@ export default function BillingFinancialDesk() {
             </div>
           </div>
         </div>
+      )}
+      {/* Printable Tax Invoice Modal */}
+      {selectedReceiptBill && (
+        <TaxInvoiceReceiptModal
+          invoice={{
+            invoiceId: selectedReceiptBill.id,
+            invoiceNumber: selectedReceiptBill.invoice_number || selectedReceiptBill.id,
+            patientName: selectedReceiptBill.patient_name || 'Patient',
+            patientUhid: selectedReceiptBill.patient_id,
+            date: selectedReceiptBill.created_at ? new Date(selectedReceiptBill.created_at).toLocaleDateString() : new Date().toLocaleDateString(),
+            department: 'Hospital Multi-Specialty Services',
+            items: (selectedReceiptBill.items || []).map((it) => ({
+              description: it.description || it.item_type || 'Hospital Service',
+              quantity: Number(it.quantity || 1),
+              unitPrice: Number(it.unit_price || 0),
+              totalPrice: Number(it.total_price || it.unit_price || 0),
+            })),
+            grossTotal: Number(selectedReceiptBill.total_amount || 0),
+            discountAmount: Number(selectedReceiptBill.discount_amount || 0),
+            taxAmount: Number(selectedReceiptBill.tax_amount || 0),
+            netPayable: Number(selectedReceiptBill.net_payable || selectedReceiptBill.total_amount || 0),
+            paymentStatus: selectedReceiptBill.status,
+            paymentMode: 'Hospital Cashier / Reconciled Counter',
+          }}
+          onClose={() => setSelectedReceiptBill(null)}
+        />
       )}
     </div>
   );

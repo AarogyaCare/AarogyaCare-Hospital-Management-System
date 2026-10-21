@@ -234,7 +234,7 @@ export default function GuidedBooking() {
             Guided Clinical Appointment
           </h1>
           <p className="text-slate-300 text-xs md:text-sm mt-1 max-w-xl">
-            Not sure which department you need? Select your symptoms and let Aarogya Care triage algorithms pair you with the ideal specialist.
+            Not sure which department you need? Select your symptoms and let Medora triage algorithms pair you with the ideal specialist.
           </p>
         </div>
 
@@ -282,7 +282,7 @@ export default function GuidedBooking() {
             </div>
             <div className="flex justify-between pt-2 border-t border-slate-200">
               <span className="text-slate-400">Location:</span>
-              <span className="font-semibold text-slate-900">OPD Suite {selectedDoctor?.opdRoom || '204'}, Grems Road Campus</span>
+              <span className="font-semibold text-slate-900">OPD Suite {selectedDoctor?.opdRoom || '204'}, Medora Campus</span>
             </div>
           </div>
 
@@ -312,7 +312,7 @@ export default function GuidedBooking() {
               <div>
                 <h3 className="text-lg font-bold text-slate-900">Step 1: Patient Verification</h3>
                 <p className="text-xs text-slate-500">
-                  Lookup by Aarogya Care UHID (e.g. <code>AAR-2026-9041</code> or <code>AAR-2026-8720</code>) or continue with current profile.
+                  Lookup by Medora UHID (e.g. <code>AAR-2026-9041</code> or <code>AAR-2026-8720</code>) or continue with current profile.
                 </p>
               </div>
 

@@ -2,10 +2,10 @@ import { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { 
   Calendar, Clock, User, CheckCircle2, ArrowRight, ArrowLeft, 
-  ShieldCheck, AlertCircle, Phone, Mail, MapPin, QrCode, Sparkles 
+  ShieldCheck, AlertCircle, Phone, Mail, MapPin, QrCode, Sparkles, Search
 } from 'lucide-react';
 import { specialtiesData } from '../data/specialties';
-import { api } from '../services/api';
+import { api, PatientDto } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { HospitalDoctor, mapDoctorResponse, deduplicateDoctors } from '../services/doctorMapping';
 import { calculatePatientAge } from '../utils/age';
@@ -29,7 +29,7 @@ const localToday = () => {
 };
 
 export default function BookAppointment() {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [searchParams] = useSearchParams();
   const initialDoctorId = searchParams.get('doctor') || '';
   const initialSpecialty = searchParams.get('specialty') || '';
@@ -53,7 +53,7 @@ export default function BookAppointment() {
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
-  const [dob, setDob] = useState('1985-06-15');
+  const [dob, setDob] = useState('');
   const [gender, setGender] = useState('Male');
   const [symptoms, setSymptoms] = useState('');
   const [isConfirmed, setIsConfirmed] = useState(false);
@@ -61,6 +61,51 @@ export default function BookAppointment() {
   const [availableSlots, setAvailableSlots] = useState<any[]>([]);
   const [bookingError, setBookingError] = useState('');
   const [isBooking, setIsBooking] = useState(false);
+
+  // Staff Patient Search & Selection (RECEPTIONIST / ADMIN)
+  const [selectedPatientId, setSelectedPatientId] = useState('');
+  const [selectedPatient, setSelectedPatient] = useState<PatientDto | null>(null);
+  const [patientSearch, setPatientSearch] = useState('');
+  const [patientSearchResults, setPatientSearchResults] = useState<PatientDto[]>([]);
+  const [isSearchingPatient, setIsSearchingPatient] = useState(false);
+
+  const handlePatientSearch = async (query: string) => {
+    setPatientSearch(query);
+    if (!query.trim()) {
+      setPatientSearchResults([]);
+      return;
+    }
+    setIsSearchingPatient(true);
+    try {
+      const results = await api.patients(query.trim());
+      setPatientSearchResults(results);
+    } catch {
+      setPatientSearchResults([]);
+    } finally {
+      setIsSearchingPatient(false);
+    }
+  };
+
+  const handleSelectPatient = (p: PatientDto) => {
+    setSelectedPatient(p);
+    setSelectedPatientId(p.id);
+    setPatientSearchResults([]);
+    setFullName(p.name);
+    setPhone(p.phone || '');
+    setEmail(p.email || '');
+    setDob(p.date_of_birth || '');
+    setGender(p.gender || 'Male');
+  };
+
+  const handleClearSelectedPatient = () => {
+    setSelectedPatient(null);
+    setSelectedPatientId('');
+    setFullName('');
+    setPhone('');
+    setEmail('');
+    setDob('');
+    setGender('Male');
+  };
 
   const calculatedAge = calculatePatientAge(dob);
 
@@ -72,6 +117,15 @@ export default function BookAppointment() {
     setFullName(user.name);
     setPhone(user.phone || '');
     setEmail(user.email);
+    // Auto-fill DOB from profile if verified and non-placeholder
+    if (user.dateOfBirth && user.dateOfBirth !== '1990-01-01') {
+      setDob(user.dateOfBirth);
+    } else {
+      setDob('');
+    }
+    if (user.gender) {
+      setGender(user.gender);
+    }
   }, [user]);
 
   useEffect(() => {
@@ -132,6 +186,7 @@ export default function BookAppointment() {
   ];
 
   const handleConfirm = async () => {
+    if (isBooking) return;
     setBookingError('');
     if (!localStorage.getItem('aarogya_access_token')) {
       setBookingError('Please sign in with a patient account before booking. The booking must be linked to an authenticated patient record.');
@@ -144,9 +199,31 @@ export default function BookAppointment() {
       setBookingError('No matching available backend slot was found. Select a time that is available in the backend.');
       return;
     }
+    if (user?.role !== 'PATIENT' && !selectedPatientId) {
+      setBookingError('Please search and select a registered patient before booking. Staff cannot book appointments against their own profile.');
+      return;
+    }
     setIsBooking(true);
     try {
-      const created = await api.bookAppointment(matching.id, symptoms || 'General consultation', consultMode === 'Video Teleconsult' ? 'VIDEO' : 'IN_PERSON', selectedDate);
+      // Persist DOB to patient profile before booking if newly provided or updated (patient self-service only)
+      if (user?.role === 'PATIENT' && dob && dob !== user.dateOfBirth) {
+        try {
+          await api.updateMyProfile({ date_of_birth: dob, gender });
+          if (refreshUser) {
+            await refreshUser();
+          }
+        } catch (profileErr) {
+          console.warn('Profile DOB sync notice:', profileErr);
+        }
+      }
+
+      const created = await api.bookAppointment(
+        matching.id,
+        symptoms || 'General consultation',
+        consultMode === 'Video Teleconsult' ? 'VIDEO' : 'IN_PERSON',
+        selectedDate,
+        user?.role !== 'PATIENT' ? selectedPatientId : undefined
+      );
       setBookingRef(created.appointment_number || created.id);
       setIsConfirmed(true);
     } catch (error) {
@@ -159,7 +236,10 @@ export default function BookAppointment() {
   const isStepValid = () => {
     if (currentStep === 0) return selectedSpecialty && selectedDoctorId;
     if (currentStep === 1) return selectedDate && selectedTime;
-    if (currentStep === 2) return fullName.trim().length > 2 && phone.trim().length >= 10;
+    if (currentStep === 2) {
+      if (user?.role !== 'PATIENT' && !selectedPatientId) return false;
+      return fullName.trim().length > 2 && phone.trim().length >= 10 && Boolean(dob) && calculatePatientAge(dob).isValid;
+    }
     return true;
   };
 
@@ -169,7 +249,7 @@ export default function BookAppointment() {
       <div className="bg-gradient-to-r from-[#002043] to-[#17365d] text-white p-8 rounded-3xl shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <span className="text-xs font-bold uppercase tracking-wider text-teal-300 bg-teal-500/20 px-3 py-1 rounded-full border border-teal-400/30">
-            Grems Road Clinical OPD
+            Medora Clinical OPD
           </span>
           <h1 className="text-2xl md:text-3xl font-extrabold mt-2 tracking-tight">
             Appointment Booking Wizard
@@ -237,7 +317,7 @@ export default function BookAppointment() {
               Appointment Confirmed
             </span>
             <h2 className="text-3xl font-extrabold text-slate-900 mt-2">
-              You're Booked at Aarogya Care!
+              You're Booked at Medora!
             </h2>
             <p className="text-xs sm:text-sm text-slate-500 mt-1">
               Token SMS and digital consultation pass sent to <strong>{phone}</strong>.
@@ -260,7 +340,7 @@ export default function BookAppointment() {
             <div className="space-y-2 text-xs text-slate-700">
               <div className="flex justify-between">
                 <span className="text-slate-400">Patient Name:</span>
-                <span className="font-bold text-slate-900">{fullName}</span>
+                <span className="font-bold text-slate-900">{fullName} {selectedPatient?.uhid ? `(${selectedPatient.uhid})` : ''}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-400">Attending Specialist:</span>
@@ -280,17 +360,17 @@ export default function BookAppointment() {
               </div>
               <div className="flex justify-between pt-2 border-t border-slate-200">
                 <span className="text-slate-400">Consultation Fee:</span>
-                <span className="font-bold text-[#002043]">₹{doctor.consultationFee} (Pay at desk or online)</span>
+                <span className="font-bold text-[#002043]">{doctor.consultationFee > 0 ? `₹${doctor.consultationFee} (Pay at desk or online)` : 'Pay at desk or online'}</span>
               </div>
             </div>
           </div>
 
           <div className="flex flex-wrap items-center justify-center gap-4">
             <Link
-              to="/portal/appointments"
+              to={user?.role === 'RECEPTIONIST' ? '/reception' : user?.role === 'ADMIN' ? '/operations/appointments' : '/portal/appointments'}
               className="px-6 py-3 bg-[#002043] hover:bg-[#17365d] text-white text-xs font-bold rounded-xl shadow-md transition"
             >
-              View in Patient Portal
+              {user?.role === 'RECEPTIONIST' ? 'Return to Reception Desk' : user?.role === 'ADMIN' ? 'Manage Appointments' : 'View in Patient Portal'}
             </Link>
             <button
               onClick={() => {
@@ -440,8 +520,80 @@ export default function BookAppointment() {
             <div className="space-y-6 animate-fadeIn">
               <div>
                 <h3 className="text-lg font-bold text-slate-900">Step 3: Patient Information</h3>
-                <p className="text-xs text-slate-500">{user?.role === 'PATIENT' ? 'Patient details are prefilled from your verified account.' : 'Provide patient details for this booking.'}</p>
+                <p className="text-xs text-slate-500">{user?.role === 'PATIENT' ? 'Patient details are prefilled from your verified account.' : 'Search and select a registered patient for this booking.'}</p>
               </div>
+
+              {/* Staff Patient Lookup (RECEPTIONIST / ADMIN) */}
+              {user?.role !== 'PATIENT' && (
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3">
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-teal-700 bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
+                      Staff Patient Lookup
+                    </span>
+                    <h4 className="text-xs font-bold text-slate-800 mt-1">Search &amp; Select Registered Patient *</h4>
+                    <p className="text-[11px] text-slate-500">
+                      Select an existing patient to attach to this booking. To register an unrecorded walk-in patient, use the Reception Desk.
+                    </p>
+                  </div>
+
+                  {!selectedPatient ? (
+                    <div className="relative">
+                      <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        value={patientSearch}
+                        onChange={(e) => handlePatientSearch(e.target.value)}
+                        placeholder="Search patient by UHID, Name, or Phone..."
+                        className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-[#002043]"
+                      />
+                      {isSearchingPatient && (
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-400">Searching...</span>
+                      )}
+
+                      {patientSearchResults.length > 0 && (
+                        <div className="mt-1 max-h-48 overflow-y-auto rounded-xl border border-slate-200 divide-y divide-slate-100 bg-white shadow-lg text-xs">
+                          {patientSearchResults.map((p) => (
+                            <div
+                              key={p.id}
+                              onClick={() => handleSelectPatient(p)}
+                              className="p-2.5 hover:bg-teal-50 cursor-pointer flex items-center justify-between transition"
+                            >
+                              <div>
+                                <span className="font-bold text-slate-900">{p.name}</span>
+                                <span className="text-slate-400 text-[11px] ml-2">UHID: {p.uhid}</span>
+                              </div>
+                              <span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">
+                                {p.phone || p.blood_group || p.date_of_birth}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="p-3 bg-teal-50 border border-teal-200 rounded-xl flex items-center justify-between text-xs">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-teal-900">{selectedPatient.name}</span>
+                          <span className="font-mono font-bold text-[10px] text-teal-700 bg-white px-1.5 py-0.5 rounded border border-teal-200">
+                            {selectedPatient.uhid}
+                          </span>
+                        </div>
+                        <span className="text-[11px] text-teal-700">
+                          DOB: {selectedPatient.date_of_birth || 'N/A'} • {selectedPatient.gender} • {selectedPatient.phone || 'No phone'}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleClearSelectedPatient}
+                        className="text-xs text-rose-600 hover:underline font-semibold"
+                      >
+                        Change Patient
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
@@ -550,20 +702,20 @@ export default function BookAppointment() {
 
                   <div>
                     <span className="text-slate-400 block">Patient Information</span>
-                    <span className="font-bold text-slate-900 text-sm mt-0.5 block">{fullName}</span>
+                    <span className="font-bold text-slate-900 text-sm mt-0.5 block">{fullName} {selectedPatient?.uhid ? `(UHID: ${selectedPatient.uhid})` : ''}</span>
                     <span className="text-slate-500">{phone} • {gender}, {calculatedAge.isValid ? calculatedAge.formattedAge : 'Age N/A'} (DOB: {dob})</span>
                   </div>
 
                   <div>
                     <span className="text-slate-400 block">Hospital Venue / Suite</span>
                     <span className="font-bold text-slate-900 text-sm mt-0.5 block">{doctor.opdRoom}</span>
-                    <span className="text-slate-500">Grems Road Campus, Chennai</span>
+                    <span className="text-slate-500">Medora Campus, Chennai</span>
                   </div>
                 </div>
 
                 <div className="pt-4 border-t border-slate-200 flex items-center justify-between text-xs">
                   <span className="text-slate-500 font-medium">Estimated Consultation Fee:</span>
-                  <span className="text-base font-extrabold text-[#002043]">₹{doctor.consultationFee}</span>
+                  <span className="text-base font-extrabold text-[#002043]">{doctor.consultationFee > 0 ? `₹${doctor.consultationFee}` : 'Fee on Consultation'}</span>
                 </div>
               </div>
             </div>
@@ -597,7 +749,8 @@ export default function BookAppointment() {
                 <button
                 type="button"
                 onClick={handleConfirm}
-                className="px-8 py-3 bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 text-white text-xs font-bold rounded-xl shadow-lg shadow-teal-500/25 flex items-center gap-2 transition"
+                disabled={isBooking}
+                className="px-8 py-3 bg-gradient-to-r from-teal-500 to-teal-600 hover:from-teal-600 hover:to-teal-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold rounded-xl shadow-lg shadow-teal-500/25 flex items-center gap-2 transition"
               >
                 <Sparkles className="w-4 h-4" />
                 <span>{isBooking ? 'Saving appointment…' : 'Confirm & Lock Appointment'}</span>

@@ -38,4 +38,17 @@ public class PatientDtos {
         @JsonProperty("emergency_contact_phone") String emergencyContactPhone,
         @JsonProperty("created_at") Instant createdAt
     ) {}
+
+    public record UpdatePatientProfileRequest(
+        String name,
+        String phone,
+        @JsonProperty("date_of_birth") String dateOfBirth,
+        String gender,
+        @JsonProperty("blood_group") String bloodGroup,
+        String address,
+        String allergies,
+        @JsonProperty("chronic_conditions") String chronicConditions,
+        @JsonProperty("emergency_contact_name") String emergencyContactName,
+        @JsonProperty("emergency_contact_phone") String emergencyContactPhone
+    ) {}
 }

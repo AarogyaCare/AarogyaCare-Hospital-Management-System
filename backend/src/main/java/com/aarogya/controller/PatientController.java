@@ -53,6 +53,21 @@ public class PatientController {
                 .body(recordService.registerPatient(request, principal));
     }
 
+    @GetMapping("/me/profile")
+    public ResponseEntity<com.aarogya.dto.PatientDtos.PatientResponse> getMyProfile(
+            @AuthenticationPrincipal UserPrincipal principal) {
+        String patientId = resolveSelfPatientId(principal);
+        return ResponseEntity.ok(recordService.getPatientProfile(patientId));
+    }
+
+    @PatchMapping("/me/profile")
+    public ResponseEntity<com.aarogya.dto.PatientDtos.PatientResponse> updateMyProfile(
+            @jakarta.validation.Valid @RequestBody com.aarogya.dto.PatientDtos.UpdatePatientProfileRequest request,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        String patientId = resolveSelfPatientId(principal);
+        return ResponseEntity.ok(recordService.updatePatientProfile(patientId, request, principal));
+    }
+
     @GetMapping("/me")
     public ResponseEntity<List<AppointmentDtos.ClinicalNoteResponse>> getMyRecords(
             @AuthenticationPrincipal UserPrincipal principal) {
@@ -86,7 +101,18 @@ public class PatientController {
     public ResponseEntity<com.aarogya.dto.PatientDtos.PatientResponse> getPatientById(
             @PathVariable String id,
             @AuthenticationPrincipal UserPrincipal principal) {
+        assertCanAccessPatientProfile(id, principal);
         return ResponseEntity.ok(recordService.getPatientProfile(id));
+    }
+
+    @PatchMapping("/{id}")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('PATIENT', 'RECEPTIONIST', 'ADMIN')")
+    public ResponseEntity<com.aarogya.dto.PatientDtos.PatientResponse> updatePatientProfile(
+            @PathVariable String id,
+            @jakarta.validation.Valid @RequestBody com.aarogya.dto.PatientDtos.UpdatePatientProfileRequest request,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        assertCanModifyPatientProfile(id, principal);
+        return ResponseEntity.ok(recordService.updatePatientProfile(id, request, principal));
     }
 
     @GetMapping("/{id}/records")
@@ -202,5 +228,38 @@ public class PatientController {
             return targetPatientIdOrUhid.equals(p.get().getId()) || targetPatientIdOrUhid.equalsIgnoreCase(p.get().getUhid());
         }
         return false;
+    }
+
+    private void assertCanModifyPatientProfile(String targetPatientIdOrUhid, UserPrincipal principal) {
+        if (principal == null) {
+            throw new Exceptions.UnauthorizedException("Authentication required.");
+        }
+        String role = principal.getRole() != null ? principal.getRole().toLowerCase() : "";
+        if (Set.of("admin", "receptionist").contains(role)) {
+            return;
+        }
+        if ("patient".equals(role)) {
+            if (isSelfPatient(targetPatientIdOrUhid, principal)) {
+                return;
+            }
+            throw new Exceptions.ForbiddenException("Access denied: You may only update your own patient profile.");
+        }
+        throw new Exceptions.ForbiddenException("Access denied: Role '" + principal.getRole() + "' is not permitted to update patient profiles.");
+    }
+    private void assertCanAccessPatientProfile(String targetPatientIdOrUhid, UserPrincipal principal) {
+        if (principal == null) {
+            throw new Exceptions.UnauthorizedException("Authentication required.");
+        }
+        String role = principal.getRole() != null ? principal.getRole().toLowerCase() : "";
+        if (Set.of("doctor", "nurse", "receptionist", "billing_staff", "admin").contains(role)) {
+            return;
+        }
+        if ("patient".equals(role)) {
+            if (isSelfPatient(targetPatientIdOrUhid, principal)) {
+                return;
+            }
+            throw new Exceptions.ForbiddenException("Access denied: You may only view your own patient profile.");
+        }
+        throw new Exceptions.ForbiddenException("Access denied: Role '" + principal.getRole() + "' is not permitted to view patient profiles.");
     }
 }

@@ -179,7 +179,7 @@ export default function DoctorProfile() {
           <div className="p-4 bg-teal-50/60 rounded-2xl border border-teal-100 flex items-center gap-3 text-xs text-teal-900">
             <ShieldCheck className="w-5 h-5 text-teal-600 shrink-0" />
             <span>
-              Verified Aarogya Care Grems Road Faculty. Clinical records and slot locks synchronized with backend.
+              Verified Medora Medora Faculty. Clinical records and slot locks synchronized with backend.
             </span>
           </div>
         </div>

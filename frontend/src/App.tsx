@@ -1,7 +1,8 @@
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import type { ReactNode } from 'react';
+import { useState, useCallback, type ReactNode } from 'react';
 import { AuthProvider } from './context/AuthContext';
 import PublicLayout from './layouts/PublicLayout';
+import SplashLoader from './components/SplashLoader';
 
 // Public Pages
 import Home from './pages/Home';
@@ -78,66 +79,72 @@ const authenticated = (...roles: UserRole[]) => (page: ReactNode) => (
 );
 
 export default function App() {
+  const [splashDone, setSplashDone] = useState(false);
+  const handleSplashComplete = useCallback(() => setSplashDone(true), []);
+
   return (
-    <AuthProvider>
-      <Router>
-        <Routes>
-          <Route element={<PublicLayout />}>
-            {/* Public Screens (1-7) */}
-            <Route path="/" element={<Home />} />
-            <Route path="/specialties" element={<Specialties />} />
-            <Route path="/doctors" element={<Doctors />} />
-            <Route path="/doctors/booking" element={<Booking />} />
-            <Route path="/doctors/:doctorId" element={<DoctorProfile />} />
-            <Route path="/appointments/book" element={authenticated('PATIENT', 'ADMIN')(<BookAppointment />)} />
-            <Route path="/appointments/guided" element={authenticated('PATIENT', 'ADMIN')(<GuidedBooking />)} />
+    <>
+      {!splashDone && <SplashLoader onComplete={handleSplashComplete} />}
+      <AuthProvider>
+        <Router>
+          <Routes>
+            <Route element={<PublicLayout />}>
+              {/* Public Screens (1-7) */}
+              <Route path="/" element={<Home />} />
+              <Route path="/specialties" element={<Specialties />} />
+              <Route path="/doctors" element={<Doctors />} />
+              <Route path="/doctors/booking" element={<Booking />} />
+              <Route path="/doctors/:doctorId" element={<DoctorProfile />} />
+              <Route path="/appointments/book" element={authenticated('PATIENT', 'RECEPTIONIST', 'ADMIN')(<BookAppointment />)} />
+              <Route path="/appointments/guided" element={authenticated('PATIENT', 'ADMIN')(<GuidedBooking />)} />
 
-            {/* Patient Portal Screens (8-12) */}
-            <Route path="/portal/login" element={<Login />} />
-            <Route path="/portal/profile" element={authenticated('PATIENT', 'DOCTOR', 'NURSE', 'RECEPTIONIST', 'PHARMACIST', 'BILLING_STAFF', 'ADMIN')(<AccountProfile />)} />
-            <Route path="/portal/dashboard" element={authenticated('PATIENT', 'ADMIN')(<Dashboard />)} />
-            <Route path="/patient-portal" element={<Navigate to="/portal/dashboard" replace />} />
-            <Route path="/portal/appointments" element={authenticated('PATIENT', 'DOCTOR', 'RECEPTIONIST', 'ADMIN')(<PatientAppointments />)} />
-            <Route path="/portal/medical-records" element={authenticated('PATIENT')(<MedicalRecords />)} />
-            <Route path="/portal/billing" element={authenticated('PATIENT', 'BILLING_STAFF', 'ADMIN')(<Billing />)} />
+              {/* Patient Portal Screens (8-12) */}
+              <Route path="/portal/login" element={<Login />} />
+              <Route path="/portal/profile" element={authenticated('PATIENT', 'DOCTOR', 'NURSE', 'RECEPTIONIST', 'PHARMACIST', 'BILLING_STAFF', 'ADMIN')(<AccountProfile />)} />
+              <Route path="/portal/dashboard" element={authenticated('PATIENT', 'ADMIN')(<Dashboard />)} />
+              <Route path="/patient-portal" element={<Navigate to="/portal/dashboard" replace />} />
+              <Route path="/portal/appointments" element={authenticated('PATIENT', 'DOCTOR', 'RECEPTIONIST', 'ADMIN')(<PatientAppointments />)} />
+              <Route path="/portal/medical-records" element={authenticated('PATIENT')(<MedicalRecords />)} />
+              <Route path="/portal/billing" element={authenticated('PATIENT', 'BILLING_STAFF', 'ADMIN')(<Billing />)} />
 
-            {/* Clinical & Nursing Screens (13-15) */}
-            <Route path="/clinical/workspace" element={authenticated('DOCTOR', 'ADMIN')(<DoctorClinicalWorkspace />)} />
-            <Route path="/clinical-dashboard" element={<Navigate to="/clinical/workspace" replace />} />
-            <Route path="/nursing/station" element={authenticated('NURSE', 'ADMIN')(<NurseTriageWorkspace />)} />
-            <Route path="/nursing-station" element={<Navigate to="/nursing/station" replace />} />
-            <Route path="/emr/patients" element={authenticated('DOCTOR', 'NURSE', 'ADMIN')(<PatientManagementEMR />)} />
-            <Route path="/emr" element={<Navigate to="/emr/patients" replace />} />
+              {/* Clinical & Nursing Screens (13-15) */}
+              <Route path="/clinical/workspace" element={authenticated('DOCTOR', 'ADMIN')(<DoctorClinicalWorkspace />)} />
+              <Route path="/clinical-dashboard" element={<Navigate to="/clinical/workspace" replace />} />
+              <Route path="/nursing/station" element={authenticated('NURSE', 'ADMIN')(<NurseTriageWorkspace />)} />
+              <Route path="/nursing-station" element={<Navigate to="/nursing/station" replace />} />
+              <Route path="/emr/patients" element={authenticated('DOCTOR', 'NURSE', 'ADMIN')(<PatientManagementEMR />)} />
+              <Route path="/emr" element={<Navigate to="/emr/patients" replace />} />
 
-            {/* Operations Screens (16-20) */}
-            <Route path="/reception" element={authenticated('RECEPTIONIST', 'ADMIN')(<ReceptionFrontDesk />)} />
-            <Route path="/pharmacy" element={authenticated('PHARMACIST', 'ADMIN')(<PharmacyInventory />)} />
-            <Route path="/billing/desk" element={authenticated('BILLING_STAFF', 'ADMIN')(<BillingFinancialDesk />)} />
-            <Route path="/billing" element={<Navigate to="/billing/desk" replace />} />
-            <Route path="/operations/hub" element={authenticated('RECEPTIONIST', 'ADMIN')(<OperationsHub />)} />
-            <Route path="/operations" element={<Navigate to="/operations/hub" replace />} />
-            <Route path="/operations/appointments" element={authenticated('RECEPTIONIST', 'DOCTOR', 'ADMIN')(<AppointmentManagement />)} />
+              {/* Operations Screens (16-20) */}
+              <Route path="/reception" element={authenticated('RECEPTIONIST', 'ADMIN')(<ReceptionFrontDesk />)} />
+              <Route path="/pharmacy" element={authenticated('PHARMACIST', 'ADMIN')(<PharmacyInventory />)} />
+              <Route path="/billing/desk" element={authenticated('BILLING_STAFF', 'ADMIN')(<BillingFinancialDesk />)} />
+              <Route path="/billing" element={<Navigate to="/billing/desk" replace />} />
+              <Route path="/operations/hub" element={authenticated('RECEPTIONIST', 'ADMIN')(<OperationsHub />)} />
+              <Route path="/operations" element={<Navigate to="/operations/hub" replace />} />
+              <Route path="/operations/appointments" element={authenticated('RECEPTIONIST', 'DOCTOR', 'ADMIN')(<AppointmentManagement />)} />
 
-            {/* Administration Screens (21-24) */}
-            <Route path="/admin" element={authenticated('ADMIN')(<AdministratorDashboard />)} />
-            <Route path="/admin/users" element={authenticated('ADMIN')(<UserRoleManagement />)} />
-            <Route path="/admin/system-health" element={authenticated('ADMIN')(<SystemHealthMonitoring />)} />
-            <Route path="/admin/reports" element={authenticated('ADMIN')(<ReportsAuditTrail />)} />
+              {/* Administration Screens (21-24) */}
+              <Route path="/admin" element={authenticated('ADMIN')(<AdministratorDashboard />)} />
+              <Route path="/admin/users" element={authenticated('ADMIN')(<UserRoleManagement />)} />
+              <Route path="/admin/system-health" element={authenticated('ADMIN')(<SystemHealthMonitoring />)} />
+              <Route path="/admin/reports" element={authenticated('ADMIN')(<ReportsAuditTrail />)} />
 
-            {/* System Design Lab Components (25-31) */}
-            <Route path="/lab/rate-limiter" element={<RateLimiterLab />} />
-            <Route path="/lab/consistent-hashing" element={<ConsistentHashingLab />} />
-            <Route path="/lab/key-value-store" element={<KeyValueStoreLab />} />
-            <Route path="/lab/unique-id-generator" element={<UniqueIdGeneratorLab />} />
-            <Route path="/lab/url-shortener" element={<UrlShortenerLab />} />
-            <Route path="/lab/web-crawler" element={<WebCrawlerLab />} />
-            <Route path="/lab/autocomplete" element={<AutocompleteLab />} />
+              {/* System Design Lab Components (25-31) */}
+              <Route path="/lab/rate-limiter" element={<RateLimiterLab />} />
+              <Route path="/lab/consistent-hashing" element={<ConsistentHashingLab />} />
+              <Route path="/lab/key-value-store" element={<KeyValueStoreLab />} />
+              <Route path="/lab/unique-id-generator" element={<UniqueIdGeneratorLab />} />
+              <Route path="/lab/url-shortener" element={<UrlShortenerLab />} />
+              <Route path="/lab/web-crawler" element={<WebCrawlerLab />} />
+              <Route path="/lab/autocomplete" element={<AutocompleteLab />} />
 
-            {/* Fallback */}
-            <Route path="*" element={<NotFound />} />
-          </Route>
-        </Routes>
-      </Router>
-    </AuthProvider>
+              {/* Fallback */}
+              <Route path="*" element={<NotFound />} />
+            </Route>
+          </Routes>
+        </Router>
+      </AuthProvider>
+    </>
   );
 }

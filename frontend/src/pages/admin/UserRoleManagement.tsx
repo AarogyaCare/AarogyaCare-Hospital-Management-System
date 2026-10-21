@@ -234,7 +234,7 @@ export default function UserRoleManagement() {
                   type="email"
                   value={newEmail}
                   onChange={(e) => setNewEmail(e.target.value)}
-                  placeholder="rajesh.kumar@aarogyacare.org"
+                  placeholder="rajesh.kumar@medora.org"
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl"
                 />
               </div>

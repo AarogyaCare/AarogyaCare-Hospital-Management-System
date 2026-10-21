@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { FileText, Pill, ShieldCheck } from 'lucide-react';
+import { FileText, Pill, ShieldCheck, FlaskConical } from 'lucide-react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
@@ -33,10 +33,31 @@ type Prescription = {
   items?: PrescriptionItem[];
 };
 
+type LabOrderItem = {
+  id: string;
+  order_number?: string;
+  test_name: string;
+  test_category?: string;
+  sample_type?: string;
+  status: string;
+  urgency?: string;
+  result_value?: string;
+  unit?: string;
+  reference_range?: string;
+  clinical_remarks?: string;
+  technician_notes?: string;
+  performed_by?: string;
+  reviewed_by?: string;
+  doctor_name?: string;
+  ordered_at?: string;
+  completed_at?: string;
+};
+
 export default function MedicalRecords() {
   const { user } = useAuth();
   const [records, setRecords] = useState<RecordItem[]>([]);
   const [prescriptions, setPrescriptions] = useState<Prescription[]>([]);
+  const [labOrders, setLabOrders] = useState<LabOrderItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -46,11 +67,13 @@ export default function MedicalRecords() {
     const patientId = user.role === 'PATIENT' ? user.patientId || user.id : undefined;
     const recordsRequest = api.records(patientId);
     const prescriptionsRequest = patientId ? api.prescriptions(patientId) : Promise.resolve([]);
-    void Promise.all([recordsRequest, prescriptionsRequest])
-      .then(([recordRows, prescriptionRows]) => {
+    const labsRequest = patientId ? api.patientLabOrders(patientId) : api.myLabOrders();
+    void Promise.all([recordsRequest, prescriptionsRequest, labsRequest])
+      .then(([recordRows, prescriptionRows, labRows]) => {
         if (!active) return;
         setRecords(recordRows);
         setPrescriptions(prescriptionRows);
+        setLabOrders(labRows || []);
       })
       .catch((requestError) => {
         if (active) setError(requestError instanceof Error ? requestError.message : 'Unable to load medical information.');
@@ -95,6 +118,76 @@ export default function MedicalRecords() {
           <ul className="divide-y divide-slate-100">{(prescription.items || []).map((item, index) => <li key={`${item.medicine_name}-${index}`} className="py-2 text-sm text-slate-700"><strong>{item.medicine_name || 'Medicine'}</strong>{item.dosage ? ` · ${item.dosage}` : ''}{item.frequency ? ` · ${item.frequency}` : ''}{item.duration_days ? ` · ${item.duration_days} days` : ''}{item.instructions ? <p className="text-xs text-slate-500 mt-1">{item.instructions}</p> : null}</li>)}</ul>
         </article>)}
       </section>}
+
+      <section className="space-y-4">
+        <h2 className="text-xl font-bold text-[#002043] flex items-center gap-2">
+          <FlaskConical className="w-5 h-5 text-teal-700" />
+          Diagnostic Laboratory Orders &amp; Results
+        </h2>
+        {!loading && !error && labOrders.length === 0 && (
+          <p className="rounded-xl border border-slate-200 bg-white p-5 text-sm text-slate-600">
+            No laboratory investigations or diagnostic results found for this account.
+          </p>
+        )}
+        {labOrders.map((lab) => (
+          <article key={lab.id} className="rounded-2xl border border-slate-200 bg-white p-5 space-y-3 shadow-xs">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <h3 className="font-bold text-slate-900 text-base">{lab.test_name}</h3>
+                {lab.order_number && (
+                  <span className="font-mono text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded border border-slate-200">
+                    {lab.order_number}
+                  </span>
+                )}
+              </div>
+              <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
+                lab.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-800' :
+                lab.status === 'SAMPLE_COLLECTED' ? 'bg-amber-100 text-amber-800' :
+                'bg-indigo-100 text-indigo-800'
+              }`}>
+                {lab.status || 'ORDERED'}
+              </span>
+            </div>
+
+            <p className="text-xs text-slate-500">
+              {lab.test_category ? `${lab.test_category} · ` : ''}
+              {lab.sample_type ? `Sample: ${lab.sample_type} · ` : ''}
+              {lab.ordered_at ? `Ordered on ${new Date(lab.ordered_at).toLocaleDateString()}` : ''}
+              {lab.doctor_name ? ` by ${lab.doctor_name}` : ''}
+            </p>
+
+            {lab.result_value ? (
+              <div className="p-3 bg-teal-50/60 border border-teal-200 rounded-xl space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-slate-500 font-medium">Diagnostic Result:</span>
+                  <span className="text-sm font-extrabold text-teal-900">
+                    {lab.result_value} {lab.unit || ''}
+                  </span>
+                  {lab.reference_range && (
+                    <span className="text-xs text-slate-500 font-medium">
+                      (Reference: {lab.reference_range})
+                    </span>
+                  )}
+                </div>
+                {lab.clinical_remarks && (
+                  <p className="text-xs text-slate-700"><strong>Remarks:</strong> {lab.clinical_remarks}</p>
+                )}
+                {lab.technician_notes && (
+                  <p className="text-xs text-slate-600"><strong>Notes:</strong> {lab.technician_notes}</p>
+                )}
+                <div className="text-[11px] text-slate-400 pt-1">
+                  {lab.reviewed_by ? `Verified by ${lab.reviewed_by}` : ''}
+                  {lab.completed_at ? ` on ${new Date(lab.completed_at).toLocaleDateString()}` : ''}
+                </div>
+              </div>
+            ) : (
+              <p className="text-xs text-slate-500 italic">
+                Sample processing in progress. Results will appear here once released by the laboratory pathologist.
+              </p>
+            )}
+          </article>
+        ))}
+      </section>
 
       <Link to="/portal/dashboard" className="inline-flex text-sm font-semibold text-teal-800 hover:underline">Back to dashboard</Link>
     </div>

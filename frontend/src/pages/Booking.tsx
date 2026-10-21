@@ -91,7 +91,7 @@ export default function Booking() {
       <div className="bg-gradient-to-r from-[#002043] to-[#17365d] text-white p-8 rounded-3xl shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <span className="text-xs font-bold uppercase tracking-wider text-teal-300 bg-teal-500/20 px-3 py-1 rounded-full border border-teal-400/30">
-            Aarogya Care Central OPD
+            Medora Central OPD
           </span>
           <h1 className="text-3xl font-extrabold mt-2 tracking-tight">
             Doctor Directory &amp; Live Booking

@@ -60,7 +60,7 @@ export default function Footer() {
                 <span className="text-xl font-bold tracking-tight text-white">
                   Aarogya<span className="text-teal-400">Care</span>
                 </span>
-                <p className="text-xs text-slate-400 font-medium">Grems Road Clinical Campus, Chennai</p>
+                <p className="text-xs text-slate-400 font-medium">Medora Clinical Campus, Chennai</p>
               </div>
             </div>
             <p className="text-xs text-slate-400 leading-relaxed max-w-sm">
@@ -109,7 +109,7 @@ export default function Footer() {
 
         {/* Bottom copyright */}
         <div className="mt-12 pt-6 border-t border-slate-800 text-xs text-slate-500 flex flex-col md:flex-row items-center justify-between gap-4">
-          <p>© 2026 Aarogya Care Management System. All rights reserved. Grems Road Clinical Campus, Chennai.</p>
+          <p>© 2026 Medora Management System. All rights reserved. Medora Clinical Campus, Chennai.</p>
           <div className="flex items-center gap-4">
             {!user && <><Link to="/specialties" className="hover:text-slate-400 transition">Specialties</Link><Link to="/doctors" className="hover:text-slate-400 transition">Doctors</Link><Link to="/portal/login" className="hover:text-slate-400 transition">Login</Link></>}
             {user?.role === 'ADMIN' && <><Link to="/admin/system-health" className="hover:text-slate-400 transition">System Status</Link><Link to="/admin/reports" className="hover:text-slate-400 transition">Audit Reports</Link></>}

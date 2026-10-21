@@ -19,8 +19,13 @@ public class AuthDtos {
         @NotBlank @Size(min = 8, message = "Password must be at least 8 characters") String password,
         @NotBlank @JsonProperty("full_name") String fullName,
         String phone,
-        String role
-    ) {}
+        String role,
+        @JsonProperty("date_of_birth") String dateOfBirth
+    ) {
+        public RegisterRequest(String email, String password, String fullName, String phone, String role) {
+            this(email, password, fullName, phone, role, null);
+        }
+    }
 
     public record StaffCreateRequest(
         @NotBlank @Email String email,
@@ -50,8 +55,13 @@ public class AuthDtos {
         @JsonProperty("experience_years") int experienceYears,
         @JsonProperty("room_number") String roomNumber,
         double rating,
-        List<String> specializations
-    ) {}
+        List<String> specializations,
+        @JsonProperty("consultation_fee") double consultationFee
+    ) {
+        public DoctorProfileDto(String id, String userId, String departmentId, String qualification, int experienceYears, String roomNumber, double rating, List<String> specializations) {
+            this(id, userId, departmentId, qualification, experienceYears, roomNumber, rating, specializations, 800.0);
+        }
+    }
 
     public record UserDto(
         String id,
