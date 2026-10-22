@@ -1,4 +1,4 @@
-# Aarogya Care — Scalable Hospital Management System
+# Medora — Scalable Hospital Management System
 
 [![Backend](https://img.shields.io/badge/Backend-Spring_Boot_3.4.3-6DB33F.svg?logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
 [![Java](https://img.shields.io/badge/Java-21%2B-ED8B00.svg?logo=openjdk&logoColor=white)](https://openjdk.org)
