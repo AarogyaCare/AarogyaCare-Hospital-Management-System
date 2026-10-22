@@ -156,8 +156,9 @@ export default function Header() {
               );
             })}
 
-            {/* System Design Lab Dropdown - Interactive Simulations */}
-            <div className="relative">
+            {/* System Design Lab Dropdown - Interactive Simulations (Admin Only) */}
+            {user?.role === 'ADMIN' && (
+              <div className="relative">
               <button
                 type="button"
                 onClick={() => setLabMenuOpen((open) => !open)}
@@ -207,7 +208,8 @@ export default function Header() {
                   ))}
                 </div>
               )}
-            </div>
+              </div>
+            )}
           </nav>
 
           {/* User Account / Action CTAs */}
@@ -360,38 +362,40 @@ export default function Header() {
               </Link>
             ))}
 
-            <div className="pt-2 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={() => setLabMenuOpen((open) => !open)}
-                aria-expanded={labMenuOpen}
-                className="flex w-full items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-bold text-teal-900 bg-teal-50/70"
-              >
-                <span className="flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-teal-600" />
-                  <span>System Design Labs</span>
-                </span>
-                <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${labMenuOpen ? 'rotate-180' : ''}`} />
-              </button>
+            {user?.role === 'ADMIN' && (
+              <div className="pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setLabMenuOpen((open) => !open)}
+                  aria-expanded={labMenuOpen}
+                  className="flex w-full items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-bold text-teal-900 bg-teal-50/70"
+                >
+                  <span className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-teal-600" />
+                    <span>System Design Labs</span>
+                  </span>
+                  <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${labMenuOpen ? 'rotate-180' : ''}`} />
+                </button>
 
-              {labMenuOpen && (
-                <div className="mt-1 space-y-1 pl-4 border-l-2 border-teal-200 ml-4 py-1">
-                  {labLinks.map((link, index) => (
-                    <Link
-                      key={link.path}
-                      to={link.path}
-                      onClick={() => {
-                        setMobileMenuOpen(false);
-                        setLabMenuOpen(false);
-                      }}
-                      className="block px-3 py-1.5 rounded-lg text-xs font-medium text-slate-700 hover:bg-teal-50"
-                    >
-                      {index + 1}. {link.name}
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </div>
+                {labMenuOpen && (
+                  <div className="mt-1 space-y-1 pl-4 border-l-2 border-teal-200 ml-4 py-1">
+                    {labLinks.map((link, index) => (
+                      <Link
+                        key={link.path}
+                        to={link.path}
+                        onClick={() => {
+                          setMobileMenuOpen(false);
+                          setLabMenuOpen(false);
+                        }}
+                        className="block px-3 py-1.5 rounded-lg text-xs font-medium text-slate-700 hover:bg-teal-50"
+                      >
+                        {index + 1}. {link.name}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="pt-3 border-t border-slate-100 flex flex-col gap-2">
               {user && dashboard ? (

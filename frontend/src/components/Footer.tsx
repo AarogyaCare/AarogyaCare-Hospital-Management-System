@@ -49,7 +49,7 @@ export default function Footer() {
 
       {/* Main Footer Links */}
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8">
+        <div className={`grid grid-cols-1 md:grid-cols-2 ${user?.role === 'ADMIN' ? 'lg:grid-cols-5' : 'lg:grid-cols-4'} gap-8`}>
           {/* Hospital Identity */}
           <div className="lg:col-span-2 space-y-4">
             <div className="flex items-center gap-3">
@@ -89,18 +89,20 @@ export default function Footer() {
             </ul>
           </div>
 
-          {/* System Design Lab */}
-          <div>
-            <h5 className="text-xs font-bold uppercase tracking-wider text-white mb-3">System Design Lab</h5>
-            <ul className="space-y-2 text-xs text-slate-400">
-              <li><Link to="/lab/rate-limiter" className="hover:text-teal-300 transition">Rate Limiter Simulation</Link></li>
-              <li><Link to="/lab/consistent-hashing" className="hover:text-teal-300 transition">Consistent Hashing Ring</Link></li>
-              <li><Link to="/lab/key-value-store" className="hover:text-teal-300 transition">LSM Key-Value Store</Link></li>
-              <li><Link to="/lab/unique-id-generator" className="hover:text-teal-300 transition">Snowflake ID Generator</Link></li>
-              <li><Link to="/lab/url-shortener" className="hover:text-teal-300 transition">URL Shortener Base62</Link></li>
-              <li><Link to="/lab/autocomplete" className="hover:text-teal-300 transition">Trie Prefix Autocomplete</Link></li>
-            </ul>
-          </div>
+          {/* System Design Lab (Admin Only) */}
+          {user?.role === 'ADMIN' && (
+            <div>
+              <h5 className="text-xs font-bold uppercase tracking-wider text-white mb-3">System Design Lab</h5>
+              <ul className="space-y-2 text-xs text-slate-400">
+                <li><Link to="/lab/rate-limiter" className="hover:text-teal-300 transition">Rate Limiter Simulation</Link></li>
+                <li><Link to="/lab/consistent-hashing" className="hover:text-teal-300 transition">Consistent Hashing Ring</Link></li>
+                <li><Link to="/lab/key-value-store" className="hover:text-teal-300 transition">LSM Key-Value Store</Link></li>
+                <li><Link to="/lab/unique-id-generator" className="hover:text-teal-300 transition">Snowflake ID Generator</Link></li>
+                <li><Link to="/lab/url-shortener" className="hover:text-teal-300 transition">URL Shortener Base62</Link></li>
+                <li><Link to="/lab/autocomplete" className="hover:text-teal-300 transition">Trie Prefix Autocomplete</Link></li>
+              </ul>
+            </div>
+          )}
         </div>
 
         {/* Bottom copyright */}
