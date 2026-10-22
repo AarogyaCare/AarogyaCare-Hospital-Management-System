@@ -66,8 +66,8 @@ export default function Header() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const dashboard = user ? dashboards[user.role] : null;
-  const authenticatedLinks = user ? roleModules[user.role] : [];
+  const dashboard = user && dashboards[user.role] ? dashboards[user.role] : null;
+  const authenticatedLinks = user && roleModules[user.role] ? roleModules[user.role] : [];
   const navLinks = [
     { name: 'Home', path: '/' },
     { name: 'Specialties', path: '/specialties' },
