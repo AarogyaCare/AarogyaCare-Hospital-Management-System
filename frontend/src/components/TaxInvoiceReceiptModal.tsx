@@ -134,7 +134,7 @@ export default function TaxInvoiceReceiptModal({ invoice, onClose }: Props) {
               <h3 className="text-base font-black text-slate-900">TAX INVOICE / RECEIPT</h3>
               <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border border-emerald-300 bg-emerald-50 text-emerald-800">
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                <span>{isPaid ? 'PAID &amp; SETTLED' : invoice.paymentStatus}</span>
+                <span>{isPaid ? 'PAID & SETTLED' : invoice.paymentStatus}</span>
               </div>
             </div>
           </div>
