@@ -57,6 +57,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/v1/specializations/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/doctors/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/medicines/**").permitAll()
+                // Medora AI status check (public)
+                .requestMatchers(HttpMethod.GET, "/api/v1/ai/status").permitAll()
                 // Public system-design components & health probes
                 .requestMatchers("/s/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/autocomplete/**").permitAll()
@@ -79,7 +81,7 @@ public class SecurityConfig {
                 // Keep liveness public; operational details are administrator-only.
                 .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
                 .requestMatchers("/actuator/**").hasRole("ADMIN")
-                // All other hospital operational endpoints require valid authentication
+                // All other hospital operational endpoints (including POST /api/v1/ai/chat) require valid authentication
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
