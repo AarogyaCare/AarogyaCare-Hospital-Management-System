@@ -1,8 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { 
-  Activity, PhoneCall, Mail, MapPin, ShieldCheck, 
-  Clock, ArrowRight, HeartPulse 
+  PhoneCall, ShieldCheck
 } from 'lucide-react';
 
 export default function Footer() {
@@ -16,6 +15,7 @@ export default function Footer() {
     BILLING_STAFF: [['Billing Desk', '/billing/desk']],
     ADMIN: [['Administration', '/admin'], ['User Management', '/admin/users'], ['System Health', '/admin/system-health'], ['Audit Reports', '/admin/reports']],
   }[user.role] : [['Login', '/portal/login'], ['Register', '/portal/login?mode=register'], ['Book Appointment', '/appointments/book']];
+
   return (
     <footer className="bg-[#001730] text-slate-300 border-t border-slate-800">
       {/* Emergency & Quick Contact Strip */}
@@ -26,7 +26,7 @@ export default function Footer() {
               <PhoneCall className="w-6 h-6 animate-pulse" />
             </div>
             <div>
-              <h4 className="text-white font-semibold text-sm">24/7 Acute Trauma & Ambulance Hotlines</h4>
+              <h4 className="text-white font-semibold text-sm">24/7 Acute Trauma &amp; Ambulance Hotlines</h4>
               <p className="text-xs text-slate-400">Door-to-balloon time &lt; 60 mins • Stroke code &lt; 45 mins</p>
             </div>
           </div>
@@ -53,15 +53,11 @@ export default function Footer() {
           {/* Hospital Identity */}
           <div className="lg:col-span-2 space-y-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#178B8B] to-[#2563eb] flex items-center justify-center text-white">
-                <Activity className="w-6 h-6" />
-              </div>
-              <div>
-                <span className="text-xl font-bold tracking-tight text-white">
-                  Aarogya<span className="text-teal-400">Care</span>
-                </span>
-                <p className="text-xs text-slate-400 font-medium">Medora Clinical Campus, Chennai</p>
-              </div>
+              <img
+                src="/medora-logo.png"
+                alt="Medora"
+                className="h-10 object-contain"
+              />
             </div>
             <p className="text-xs text-slate-400 leading-relaxed max-w-sm">
               A 650-bed quaternary referral hospital delivering clinical excellence across Cardiology, Neurosurgery, Robotic Orthopedics, and Multi-organ Transplants with integrated digital health architecture.
@@ -76,18 +72,18 @@ export default function Footer() {
           <div>
             <h5 className="text-xs font-bold uppercase tracking-wider text-white mb-3">Centres of Excellence</h5>
             <ul className="space-y-2 text-xs text-slate-400">
-              <li><Link to="/specialties" className="hover:text-teal-300 transition">Cardiology & Heart Center</Link></li>
-              <li><Link to="/specialties" className="hover:text-teal-300 transition">Neurology & Neurosurgery</Link></li>
+              <li><Link to="/specialties" className="hover:text-teal-300 transition">Cardiology &amp; Heart Center</Link></li>
+              <li><Link to="/specialties" className="hover:text-teal-300 transition">Neurology &amp; Neurosurgery</Link></li>
               <li><Link to="/specialties" className="hover:text-teal-300 transition">Robotic Orthopedics</Link></li>
-              <li><Link to="/specialties" className="hover:text-teal-300 transition">Medical & Surgical Oncology</Link></li>
-              <li><Link to="/specialties" className="hover:text-teal-300 transition">Nephrology & Kidney Transplant</Link></li>
-              <li><Link to="/specialties" className="hover:text-teal-300 transition">Level-1 Trauma & Emergency</Link></li>
+              <li><Link to="/specialties" className="hover:text-teal-300 transition">Medical &amp; Surgical Oncology</Link></li>
+              <li><Link to="/specialties" className="hover:text-teal-300 transition">Nephrology &amp; Kidney Transplant</Link></li>
+              <li><Link to="/specialties" className="hover:text-teal-300 transition">Level-1 Trauma &amp; Emergency</Link></li>
             </ul>
           </div>
 
           {/* Quick Access Portals */}
           <div>
-            <h5 className="text-xs font-bold uppercase tracking-wider text-white mb-3">Portals & Workspaces</h5>
+            <h5 className="text-xs font-bold uppercase tracking-wider text-white mb-3">Portals &amp; Workspaces</h5>
             <ul className="space-y-2 text-xs text-slate-400">
               {portalLinks.map(([label, path]) => <li key={path}><Link to={path} className="hover:text-teal-300 transition">{label}</Link></li>)}
             </ul>

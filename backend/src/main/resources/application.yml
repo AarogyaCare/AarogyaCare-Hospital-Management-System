@@ -35,6 +35,11 @@ aarogya:
     auth-refill-rate: 2
     emergency-capacity: 500
     emergency-refill-rate: 50
+  ai:
+    gemini:
+      api-key: ${GEMINI_API_KEY:}
+      model: ${GEMINI_MODEL:gemini-3.5-flash}
+      timeout-seconds: ${GEMINI_TIMEOUT_SECONDS:30}
 
 springdoc:
   api-docs:

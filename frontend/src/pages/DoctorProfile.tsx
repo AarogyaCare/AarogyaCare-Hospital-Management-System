@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   Star, Calendar, Clock, MapPin, Award,
-  GraduationCap, Globe, CheckCircle2, ShieldCheck, ArrowLeft, RefreshCw
+  GraduationCap, Globe, CheckCircle2, ShieldCheck, ArrowLeft, RefreshCw, Sparkles
 } from 'lucide-react';
 import { api } from '../services/api';
 import { HospitalDoctor, mapDoctorResponse } from '../services/doctorMapping';
@@ -67,7 +67,7 @@ export default function DoctorProfile() {
 
   if (isLoading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 md:px-8 py-16 text-center text-slate-600 text-sm">
+      <div className="max-w-7xl mx-auto px-4 md:px-8 py-16 text-center text-slate-600 text-xs font-semibold">
         Loading doctor profile from hospital database…
       </div>
     );
@@ -76,7 +76,7 @@ export default function DoctorProfile() {
   if (loadError || !doctor) {
     return (
       <div className="max-w-7xl mx-auto px-4 md:px-8 py-16 text-center space-y-4">
-        <p className="text-rose-700 font-semibold">{loadError || 'Doctor not found.'}</p>
+        <p className="text-rose-700 font-semibold text-sm">{loadError || 'Doctor not found.'}</p>
         <Link to="/doctors" className="px-4 py-2 bg-[#002043] text-white rounded-xl text-xs font-bold inline-block">
           Return to Doctors Directory
         </Link>
@@ -85,36 +85,36 @@ export default function DoctorProfile() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 md:px-8 py-10 space-y-8">
+    <div className="max-w-7xl mx-auto px-4 md:px-8 py-10 space-y-8 animate-fade-in">
       {/* Back button */}
       <Link
         to="/doctors"
-        className="inline-flex items-center gap-2 text-xs font-semibold text-slate-600 hover:text-[#002043] transition"
+        className="inline-flex items-center gap-2 text-xs font-bold text-slate-600 hover:text-teal-800 transition"
       >
         <ArrowLeft className="w-4 h-4" />
         <span>Back to Doctor Directory</span>
       </Link>
 
-      {/* Profile Overview Card */}
-      <div className="bg-white rounded-3xl border border-slate-200 p-6 md:p-10 shadow-sm grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      {/* Profile Overview Card (Frosted Glass) */}
+      <div className="rounded-3xl border border-white/80 bg-white/85 backdrop-blur-xl p-6 md:p-10 shadow-sm grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Left Column: Image & Quick Details */}
-        <div className="lg:col-span-4 flex flex-col items-center text-center p-6 bg-slate-50/80 rounded-2xl border border-slate-100">
+        <div className="lg:col-span-4 flex flex-col items-center text-center p-6 bg-slate-50/80 rounded-3xl border border-slate-100">
           <img
             src={doctor.imageUrl}
             alt={doctor.name}
             className="w-36 h-36 rounded-3xl object-cover border-4 border-white shadow-md mb-4"
           />
-          <span className="px-3 py-1 rounded-full bg-teal-50 text-teal-800 text-xs font-bold border border-teal-200 uppercase tracking-wide">
+          <span className="px-3 py-1 rounded-full bg-teal-50 text-teal-800 text-[10px] font-bold border border-teal-200 uppercase tracking-wide">
             {doctor.departmentName || doctor.specialty}
           </span>
           <h1 className="text-2xl font-black text-slate-900 mt-2">{doctor.name}</h1>
           <p className="text-xs text-slate-500 font-medium mt-1">{doctor.title}</p>
-          <p className="text-xs text-slate-600 font-semibold mt-1">{doctor.qualification}</p>
+          <p className="text-xs text-slate-700 font-semibold mt-1">{doctor.qualification}</p>
 
-          <div className="flex items-center gap-1.5 mt-3 text-sm text-amber-500 font-bold">
+          <div className="flex items-center gap-1.5 mt-3 text-xs text-amber-500 font-bold">
             <Star className="w-4 h-4 fill-current" />
             <span>{doctor.rating}</span>
-            <span className="text-slate-400 font-normal text-xs">({doctor.reviewCount} verified reviews)</span>
+            <span className="text-slate-400 font-normal">({doctor.reviewCount} verified reviews)</span>
           </div>
 
           <div className="w-full mt-6 pt-6 border-t border-slate-200 space-y-2 text-xs text-left text-slate-600">
@@ -140,14 +140,14 @@ export default function DoctorProfile() {
         {/* Middle Column: Biography, Education & Accolades */}
         <div className="lg:col-span-5 space-y-6">
           <div>
-            <h2 className="text-lg font-bold text-slate-900 mb-2">About the Specialist</h2>
+            <h2 className="text-base font-bold text-slate-900 mb-2">Clinical Profile &amp; Focus</h2>
             <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
               {doctor.bio}
             </p>
           </div>
 
           <div>
-            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2 mb-2">
+            <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2 mb-2">
               <GraduationCap className="w-4 h-4 text-teal-600" />
               <span>Medical Education &amp; Fellowships</span>
             </h3>
@@ -162,7 +162,7 @@ export default function DoctorProfile() {
           </div>
 
           <div>
-            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2 mb-2">
+            <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2 mb-2">
               <Award className="w-4 h-4 text-amber-500" />
               <span>Honours &amp; Clinical Recognitions</span>
             </h3>
@@ -176,33 +176,33 @@ export default function DoctorProfile() {
             </ul>
           </div>
 
-          <div className="p-4 bg-teal-50/60 rounded-2xl border border-teal-100 flex items-center gap-3 text-xs text-teal-900">
+          <div className="p-4 bg-teal-50/70 rounded-2xl border border-teal-200/80 flex items-center gap-3 text-xs text-teal-900 shadow-xs">
             <ShieldCheck className="w-5 h-5 text-teal-600 shrink-0" />
             <span>
-              Verified Medora Medora Faculty. Clinical records and slot locks synchronized with backend.
+              Verified Medora Faculty. Real-time calendar slot lock synchronized with hospital scheduling service.
             </span>
           </div>
         </div>
 
         {/* Right Column: Direct Slot Booking Widget */}
-        <div className="lg:col-span-3 bg-gradient-to-b from-[#002043] to-[#17365d] text-white p-6 rounded-3xl shadow-lg space-y-5">
+        <div className="lg:col-span-3 bg-gradient-to-b from-[#002043] via-[#002b54] to-[#178B8B] text-white p-6 rounded-3xl shadow-xl space-y-5 border border-white/10">
           <div>
             <span className="text-[10px] font-bold uppercase tracking-wider text-teal-300">Fast Appointment</span>
             <h3 className="text-lg font-bold mt-1">Book Consultation</h3>
-            <p className="text-xs text-slate-300 mt-1">Direct backend calendar lock with instant SMS confirmation.</p>
+            <p className="text-xs text-slate-300 mt-1">Real-time slot reservation with instant confirmation.</p>
           </div>
 
           {/* Consultation Mode */}
           <div>
-            <label className="text-xs font-semibold text-slate-300 block mb-1.5">Mode of Consultation</label>
+            <label className="text-xs font-semibold text-slate-300 block mb-1.5">Consultation Mode</label>
             <div className="grid grid-cols-2 gap-2 text-xs">
               <button
                 type="button"
                 onClick={() => setConsultMode('In-Person OPD')}
-                className={`py-2 px-2 rounded-xl text-center font-medium transition ${
+                className={`py-2 px-2 rounded-xl text-center font-bold transition ${
                   consultMode === 'In-Person OPD'
-                    ? 'bg-teal-500 text-white font-bold'
-                    : 'bg-white/10 text-slate-300 hover:bg-white/20'
+                    ? 'bg-teal-400 text-[#002043] shadow-md'
+                    : 'bg-white/10 text-slate-300 hover:bg-white/15'
                 }`}
               >
                 In-Person OPD
@@ -210,10 +210,10 @@ export default function DoctorProfile() {
               <button
                 type="button"
                 onClick={() => setConsultMode('Video Teleconsult')}
-                className={`py-2 px-2 rounded-xl text-center font-medium transition ${
+                className={`py-2 px-2 rounded-xl text-center font-bold transition ${
                   consultMode === 'Video Teleconsult'
-                    ? 'bg-teal-500 text-white font-bold'
-                    : 'bg-white/10 text-slate-300 hover:bg-white/20'
+                    ? 'bg-teal-400 text-[#002043] shadow-md'
+                    : 'bg-white/10 text-slate-300 hover:bg-white/15'
                 }`}
               >
                 Video Teleconsult
@@ -223,7 +223,7 @@ export default function DoctorProfile() {
 
           {/* Date Selector */}
           <div>
-            <label className="text-xs font-semibold text-slate-300 block mb-1.5">Select Date</label>
+            <label className="text-xs font-semibold text-slate-300 block mb-1.5">Consultation Date</label>
             <input
               type="date"
               value={selectedDate}
@@ -236,11 +236,11 @@ export default function DoctorProfile() {
           <div>
             <label className="text-xs font-semibold text-slate-300 block mb-1.5">Available Slots</label>
             {availableSlots.length === 0 ? (
-              <p className="text-xs text-amber-300 bg-amber-500/20 p-2.5 rounded-xl border border-amber-400/30">
+              <p className="text-xs text-amber-200 bg-amber-500/20 p-2.5 rounded-xl border border-amber-400/30">
                 No open slots for this date. Please pick another day.
               </p>
             ) : (
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-2 max-h-36 overflow-y-auto">
                 {availableSlots.map((slot) => {
                   const time = slot.slot_start;
                   return (
@@ -248,9 +248,9 @@ export default function DoctorProfile() {
                       key={slot.id || slot.slot_id}
                       type="button"
                       onClick={() => setSelectedSlot(time)}
-                      className={`py-2 px-2 rounded-xl text-xs text-center font-medium transition ${
+                      className={`py-2 px-2 rounded-xl text-xs text-center font-bold transition ${
                         selectedSlot === time
-                          ? 'bg-white text-[#002043] font-bold shadow-md'
+                          ? 'bg-white text-[#002043] shadow-md'
                           : 'bg-white/10 text-slate-300 hover:bg-white/15'
                       }`}
                     >
@@ -264,16 +264,16 @@ export default function DoctorProfile() {
 
           <div className="pt-2 border-t border-white/10">
             <div className="flex items-center justify-between text-xs text-slate-300 mb-4">
-              <span>OPD Consultation:</span>
-              <span className="text-base font-bold text-white">₹{doctor.consultationFee}</span>
+              <span>OPD Consultation Fee:</span>
+              <span className="text-base font-extrabold text-white">₹{doctor.consultationFee}</span>
             </div>
 
             <button
               onClick={handleBookNow}
               disabled={!selectedSlot}
-              className="w-full py-3 bg-teal-400 hover:bg-teal-300 disabled:opacity-50 text-[#002043] font-bold text-xs rounded-xl shadow-md transition"
+              className="w-full py-3 bg-gradient-to-r from-teal-400 to-teal-500 hover:from-teal-300 hover:to-teal-400 disabled:opacity-50 text-[#002043] font-black text-xs rounded-xl shadow-lg transition transform hover:-translate-y-0.5 active:translate-y-0"
             >
-              Confirm &amp; Enter Details
+              Confirm &amp; Proceed to Booking
             </button>
           </div>
         </div>

@@ -150,6 +150,19 @@ export interface InvoiceDto {
   created_at?: string;
 }
 
+export interface AiChatResponse {
+  reply?: string;
+  success: boolean;
+  error?: string;
+  model_used?: string;
+}
+
+export interface AiStatusResponse {
+  configured: boolean;
+  model: string;
+  message: string;
+}
+
 export async function apiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
   const token = localStorage.getItem('aarogya_access_token');
   const headers = new Headers(init.headers);
@@ -306,4 +319,8 @@ export const api = {
   telemetry: () => apiRequest<any>('/api/v1/system-design/telemetry'),
   rateLimitMetrics: () => apiRequest<any>('/api/v1/system-design/ratelimiter/metrics'),
   idBenchmark: (count: number) => apiRequest<any>('/api/v1/system-design/ids/benchmark', { method: 'POST', body: JSON.stringify({ sample_size: count }) }),
+
+  // Medora AI Assistant
+  aiStatus: () => apiRequest<AiStatusResponse>('/api/v1/ai/status'),
+  aiChat: (message: string) => apiRequest<AiChatResponse>('/api/v1/ai/chat', { method: 'POST', body: JSON.stringify({ message }) }),
 };

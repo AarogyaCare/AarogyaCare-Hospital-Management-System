@@ -3,6 +3,7 @@ import { useState, useCallback, type ReactNode } from 'react';
 import { AuthProvider } from './context/AuthContext';
 import PublicLayout from './layouts/PublicLayout';
 import SplashLoader from './components/SplashLoader';
+import MedoraAI from './components/MedoraAI';
 
 // Public Pages
 import Home from './pages/Home';
@@ -143,6 +144,7 @@ export default function App() {
               <Route path="*" element={<NotFound />} />
             </Route>
           </Routes>
+          <MedoraAI />
         </Router>
       </AuthProvider>
     </>
