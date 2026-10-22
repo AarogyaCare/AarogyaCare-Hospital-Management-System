@@ -42,6 +42,7 @@ public class AppointmentDocument {
     private String triageNotes;
     private String triagedBy;
     private Instant triagedAt;
+    private String shortUrl;
     private Instant createdAt = Instant.now();
     private Instant updatedAt = Instant.now();
 
@@ -108,6 +109,9 @@ public class AppointmentDocument {
 
     public Instant getTriagedAt() { return triagedAt; }
     public void setTriagedAt(Instant triagedAt) { this.triagedAt = triagedAt; }
+
+    public String getShortUrl() { return shortUrl; }
+    public void setShortUrl(String shortUrl) { this.shortUrl = shortUrl; }
 
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }

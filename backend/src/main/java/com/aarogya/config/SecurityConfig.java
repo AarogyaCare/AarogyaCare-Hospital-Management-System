@@ -68,6 +68,11 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/v1/short-links/*/revoke").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.GET, "/api/v1/crawler/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/v1/crawler/jobs").hasRole("ADMIN")
+                // Medical Knowledge Discovery & Resource Preview
+                .requestMatchers(HttpMethod.GET, "/api/v1/knowledge/**").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/v1/knowledge/sources").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/api/v1/knowledge/sources/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.POST, "/api/v1/knowledge/crawl").hasAnyRole("ADMIN", "DOCTOR")
                 .requestMatchers(HttpMethod.GET, "/api/v1/system-design/telemetry").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.GET, "/api/v1/system-design/ratelimiter/metrics").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.POST, "/api/v1/system-design/hashring/nodes/**").hasRole("ADMIN")

@@ -14,11 +14,18 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
+import com.aarogya.util.DateTimeUtils;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeParseException;
 import java.util.*;
+import com.aarogya.systemdesign.shortlink.ShortLinkService;
 
 @Service
 public class AppointmentService {
@@ -33,6 +40,10 @@ public class AppointmentService {
     private final MongoTemplate mongoTemplate;
     private final UniqueIdGeneratorService idGenerator;
     private final AuditService auditService;
+    private final Clock clock;
+    private final ZoneId zoneId;
+    @Autowired(required = false)
+    private ShortLinkService shortLinkService;
     private final ObjectMapper objectMapper = new ObjectMapper()
             .registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule())
             .disable(com.fasterxml.jackson.databind.SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
@@ -48,6 +59,25 @@ public class AppointmentService {
             MongoTemplate mongoTemplate,
             UniqueIdGeneratorService idGenerator,
             AuditService auditService) {
+        this(appointmentRepository, slotRepository, doctorRepository, departmentRepository,
+                patientRepository, userRepository, idempotencyRepository, mongoTemplate,
+                idGenerator, auditService, Clock.system(ZoneId.of("Asia/Kolkata")), ZoneId.of("Asia/Kolkata"));
+    }
+
+    @Autowired
+    public AppointmentService(
+            AppointmentRepository appointmentRepository,
+            DoctorSlotRepository slotRepository,
+            DoctorRepository doctorRepository,
+            DepartmentRepository departmentRepository,
+            PatientRepository patientRepository,
+            UserRepository userRepository,
+            IdempotencyRecordRepository idempotencyRepository,
+            MongoTemplate mongoTemplate,
+            UniqueIdGeneratorService idGenerator,
+            AuditService auditService,
+            Clock clock,
+            ZoneId zoneId) {
         this.appointmentRepository = appointmentRepository;
         this.slotRepository = slotRepository;
         this.doctorRepository = doctorRepository;
@@ -58,6 +88,12 @@ public class AppointmentService {
         this.mongoTemplate = mongoTemplate;
         this.idGenerator = idGenerator;
         this.auditService = auditService;
+        this.clock = clock != null ? clock : Clock.system(ZoneId.of("Asia/Kolkata"));
+        this.zoneId = zoneId != null ? zoneId : ZoneId.of("Asia/Kolkata");
+    }
+
+    public void setShortLinkService(ShortLinkService shortLinkService) {
+        this.shortLinkService = shortLinkService;
     }
 
     public AppointmentDtos.AppointmentResponse bookAppointment(UserPrincipal principal, AppointmentDtos.BookAppointmentRequest req, String idempotencyKey) {
@@ -72,7 +108,18 @@ public class AppointmentService {
         }
 
         if (principal == null) throw new Exceptions.UnauthorizedException("Authentication required.");
-        validateAppointmentDate(req.appointmentDate());
+        if (req.slotId() == null || req.slotId().isBlank()) {
+            throw new Exceptions.BadRequestException("Slot ID is required.");
+        }
+
+        // 2. DEF-01 FIX: Read-only slot existence check.
+        DoctorSlotDocument reservedSlot = slotRepository.findById(req.slotId())
+                .orElseThrow(() -> new Exceptions.ResourceNotFoundException("Doctor slot not found with id: " + req.slotId()));
+        if ("BLOCKED".equalsIgnoreCase(reservedSlot.getStatus()) || "CANCELLED".equalsIgnoreCase(reservedSlot.getStatus())) {
+            throw new Exceptions.ConflictException("This doctor slot is permanently blocked or cancelled and cannot be booked.");
+        }
+
+        validateAppointmentDateAndSlot(reservedSlot, req.appointmentDate());
 
         // Resolve patient record; staff can explicitly select a patient, or use authenticated patient profile
         String role = principal.getRole() != null ? principal.getRole().toLowerCase() : "patient";
@@ -110,20 +157,9 @@ public class AppointmentService {
             patientId = principal.getId();
         }
 
-        // 3. DEF-01 FIX: Read-only slot existence check.
-        //    Slot templates are shared across dates; mutating their status permanently would
-        //    prevent booking on any other date.  Concurrency for a specific date is enforced
-        //    instead by the compound unique index on (doctorId, slotId, appointmentDate) in
-        //    AppointmentDocument, which causes DuplicateKeyException on the save below.
-        DoctorSlotDocument reservedSlot = slotRepository.findById(req.slotId())
-                .orElseThrow(() -> new Exceptions.ResourceNotFoundException("Doctor slot not found with id: " + req.slotId()));
-        if ("BLOCKED".equalsIgnoreCase(reservedSlot.getStatus()) || "CANCELLED".equalsIgnoreCase(reservedSlot.getStatus())) {
-            throw new Exceptions.ConflictException("This doctor slot is permanently blocked or cancelled and cannot be booked.");
-        }
-
         // Early conflict check (non-atomic fast path; real atomicity is the unique index on save)
         if (appointmentRepository.existsByDoctorIdAndSlotIdAndAppointmentDateAndStatusNot(
-                reservedSlot.getDoctorId(), reservedSlot.getId(), req.appointmentDate(), "CANCELLED")) {
+                reservedSlot.getDoctorId(), reservedSlot.getId(), req.appointmentDate().trim(), "CANCELLED")) {
             throw new Exceptions.ConflictException("This time slot is already booked for the selected date.");
         }
 
@@ -164,6 +200,21 @@ public class AppointmentService {
         } catch (DuplicateKeyException ex) {
             // No slot document mutation — slot template status is never changed by booking logic (DEF-01).
             throw new Exceptions.ConflictException("This time slot is already booked for the selected date. Please choose a different date or slot.");
+        }
+
+        if (shortLinkService != null) {
+            try {
+                String targetUrl = "http://localhost:5173/portal/appointments";
+                ShortLinkDocument shortDoc = shortLinkService.createShortLink(
+                        targetUrl,
+                        "APPOINTMENT",
+                        appointmentId,
+                        60L * 60 * 24 * 30
+                );
+                String shortUrl = "http://localhost:8000/s/" + shortDoc.getCode();
+                appointment.setShortUrl(shortUrl);
+                appointmentRepository.save(appointment);
+            } catch (Exception ignored) {}
         }
 
         AppointmentDtos.AppointmentResponse response = mapToResponse(appointment);
@@ -231,6 +282,10 @@ public class AppointmentService {
     }
 
     public AppointmentDtos.AppointmentResponse rescheduleAppointment(String appointmentId, String newSlotId, UserPrincipal principal) {
+        return rescheduleAppointment(appointmentId, newSlotId, null, principal);
+    }
+
+    public AppointmentDtos.AppointmentResponse rescheduleAppointment(String appointmentId, String newSlotId, String newAppointmentDate, UserPrincipal principal) {
         AppointmentDocument appointment = appointmentRepository.findById(appointmentId)
                 .orElseThrow(() -> new Exceptions.ResourceNotFoundException("Appointment not found with id: " + appointmentId));
 
@@ -238,7 +293,7 @@ public class AppointmentService {
 
         // State Machine Invariant: Only CONFIRMED appointments can be rescheduled
         String currentStatus = appointment.getStatus();
-        if (!"CONFIRMED".equalsIgnoreCase(currentStatus)) {
+        if (!"CONFIRMED".equalsIgnoreCase(currentStatus) && !"SCHEDULED".equalsIgnoreCase(currentStatus)) {
             throw new Exceptions.ConflictException("Cannot reschedule an appointment with status: " + currentStatus);
         }
 
@@ -248,10 +303,16 @@ public class AppointmentService {
         if ("BLOCKED".equalsIgnoreCase(reservedNewSlot.getStatus()) || "CANCELLED".equalsIgnoreCase(reservedNewSlot.getStatus())) {
             throw new Exceptions.ConflictException("Target reschedule slot is permanently blocked or cancelled.");
         }
-        // Check the new slot isn't already booked on the same appointment date
-        if (appointment.getAppointmentDate() != null &&
-                appointmentRepository.existsByDoctorIdAndSlotIdAndAppointmentDateAndStatusNot(
-                        reservedNewSlot.getDoctorId(), newSlotId, appointment.getAppointmentDate(), "CANCELLED")) {
+
+        String targetDate = (newAppointmentDate != null && !newAppointmentDate.isBlank())
+                ? newAppointmentDate.trim()
+                : appointment.getAppointmentDate();
+
+        validateAppointmentDateAndSlot(reservedNewSlot, targetDate);
+
+        // Check the new slot isn't already booked on the target appointment date
+        if (appointmentRepository.existsByDoctorIdAndSlotIdAndAppointmentDateAndStatusNot(
+                reservedNewSlot.getDoctorId(), newSlotId, targetDate, "CANCELLED")) {
             throw new Exceptions.ConflictException("Target reschedule slot is already booked for that date.");
         }
         // Old slot template is NOT modified; cancelling the appointment document is sufficient.
@@ -259,8 +320,18 @@ public class AppointmentService {
         // Update appointment
         appointment.setSlotId(newSlotId);
         appointment.setDoctorId(reservedNewSlot.getDoctorId());
+        appointment.setAppointmentDate(targetDate);
         appointment.setUpdatedAt(Instant.now());
         appointmentRepository.save(appointment);
+
+        auditService.recordEvent(
+                principal != null ? principal.getId() : "system",
+                principal != null ? principal.getUsername() : "system",
+                "RESCHEDULE_APPOINTMENT",
+                "Appointment",
+                appointmentId,
+                "Rescheduled to slot " + newSlotId + " on " + targetDate
+        );
 
         return mapToResponse(appointment);
     }
@@ -405,9 +476,9 @@ public class AppointmentService {
         String appDate = apt.getAppointmentDate();
         if (appDate == null || appDate.isBlank()) {
             if (apt.getCreatedAt() != null) {
-                appDate = apt.getCreatedAt().atZone(java.time.ZoneOffset.UTC).toLocalDate().toString();
+                appDate = apt.getCreatedAt().atZone(zoneId).toLocalDate().toString();
             } else {
-                appDate = LocalDate.now().toString();
+                appDate = LocalDate.now(clock).toString();
             }
         }
 
@@ -432,7 +503,8 @@ public class AppointmentService {
                 apt.getVitalSigns(),
                 apt.getTriageNotes(),
                 apt.getTriagedBy(),
-                apt.getTriagedAt()
+                apt.getTriagedAt(),
+                apt.getShortUrl()
         );
     }
 
@@ -456,19 +528,36 @@ public class AppointmentService {
         return mapToResponse(saved);
     }
 
-    private void validateAppointmentDate(String appointmentDate) {
-        // DEF-01: appointment_date is mandatory; null/blank is rejected with HTTP 400
+    public void validateAppointmentDateAndSlot(DoctorSlotDocument slot, String appointmentDate) {
         if (appointmentDate == null || appointmentDate.isBlank()) {
             throw new Exceptions.BadRequestException("Appointment date is required. Provide a valid future date in YYYY-MM-DD format.");
         }
+        LocalDate parsed;
         try {
-            LocalDate parsed = LocalDate.parse(appointmentDate.trim());
-            if (parsed.isBefore(LocalDate.now())) {
-                throw new Exceptions.BadRequestException("Appointment date cannot be in the past.");
-            }
+            parsed = LocalDate.parse(appointmentDate.trim());
         } catch (DateTimeParseException ex) {
             throw new Exceptions.BadRequestException("Invalid appointment date format: " + appointmentDate + ". Expected ISO-8601 date (YYYY-MM-DD).");
         }
+
+        LocalDate today = LocalDate.now(clock);
+        if (parsed.isBefore(today)) {
+            throw new Exceptions.BadRequestException("Appointment date cannot be in the past.");
+        }
+
+        if (parsed.isEqual(today) && slot != null) {
+            LocalTime slotTime = DateTimeUtils.parseSlotTime(slot.getSlotStart());
+            if (slotTime != null) {
+                LocalDateTime slotDateTime = LocalDateTime.of(today, slotTime);
+                LocalDateTime currentDateTime = LocalDateTime.now(clock);
+                if (!slotDateTime.isAfter(currentDateTime)) {
+                    throw new Exceptions.BadRequestException("Selected appointment slot time has already passed.");
+                }
+            }
+        }
+    }
+
+    public void validateAppointmentDate(String appointmentDate) {
+        validateAppointmentDateAndSlot(null, appointmentDate);
     }
 }
 

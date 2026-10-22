@@ -76,7 +76,8 @@ export default function AppointmentManagement() {
       return;
     }
     try {
-      const slots = await api.slots(apt.doctor_id);
+      const date = apt.appointment_date || new Date().toISOString().slice(0, 10);
+      const slots = await api.slots(apt.doctor_id, date);
       const available = slots.filter((s: any) => String(s.status).toUpperCase() === 'AVAILABLE');
       setAvailableSlots(available);
       if (available.length > 0) {
@@ -93,7 +94,7 @@ export default function AppointmentManagement() {
     if (!rescheduleApt || !newSlotId) return;
     setIsRescheduling(true);
     try {
-      await api.rescheduleAppointment(rescheduleApt.id, newSlotId, rescheduleReason);
+      await api.rescheduleAppointment(rescheduleApt.id, newSlotId, rescheduleReason, rescheduleApt.appointment_date);
       showToast('Appointment rescheduled successfully.');
       setRescheduleApt(null);
       await loadData();

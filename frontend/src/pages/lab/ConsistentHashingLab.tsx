@@ -1,7 +1,8 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { 
   RotateCw, Plus, Trash2, CheckCircle2, 
-  Layers, Database, ArrowRight, ShieldCheck, Zap 
+  Layers, Database, ArrowRight, ShieldCheck, Zap, Activity
 } from 'lucide-react';
 
 interface ServerNode {
@@ -91,6 +92,24 @@ export default function ConsistentHashingLab() {
           <Plus className="w-4 h-4" />
           <span>Add Cache Node</span>
         </button>
+      </div>
+
+      {/* Production Integration Callout */}
+      <div className="p-4 rounded-2xl bg-slate-900 border border-teal-800/50 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-300 shadow-md">
+        <div className="flex items-center gap-2.5">
+          <Activity className="w-4 h-4 text-teal-400 shrink-0" />
+          <span>
+            <strong className="text-white font-semibold">Live System Design Routing:</strong> Real medical guideline queries and patient searches are routed through this Consistent Hash Ring into partitioned Redis namespaces (<code className="text-teal-300 font-mono">part:node:key</code>).
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <Link to="/clinical/knowledge" className="px-3 py-1.5 bg-teal-600 hover:bg-teal-500 text-white font-semibold rounded-lg transition shadow-sm">
+            View Live Clinical Router
+          </Link>
+          <Link to="/portal/knowledge" className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold rounded-lg transition shadow-sm">
+            Patient Hub
+          </Link>
+        </div>
       </div>
 
       {testResult && (

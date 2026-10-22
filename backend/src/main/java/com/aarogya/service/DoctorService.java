@@ -10,8 +10,15 @@ import com.aarogya.repository.AppointmentRepository;
 import com.aarogya.repository.DoctorRepository;
 import com.aarogya.repository.DoctorSlotRepository;
 import com.aarogya.repository.UserRepository;
+import com.aarogya.util.DateTimeUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.time.Clock;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.*;
 
 @Service
@@ -22,6 +29,7 @@ public class DoctorService {
     private final UserRepository userRepository;
     private final DepartmentRepository departmentRepository;
     private final AppointmentRepository appointmentRepository;
+    private final Clock clock;
 
     public DoctorService(
             DoctorRepository doctorRepository,
@@ -29,11 +37,24 @@ public class DoctorService {
             UserRepository userRepository,
             DepartmentRepository departmentRepository,
             AppointmentRepository appointmentRepository) {
+        this(doctorRepository, slotRepository, userRepository, departmentRepository, appointmentRepository,
+                Clock.system(ZoneId.of("Asia/Kolkata")));
+    }
+
+    @Autowired
+    public DoctorService(
+            DoctorRepository doctorRepository,
+            DoctorSlotRepository slotRepository,
+            UserRepository userRepository,
+            DepartmentRepository departmentRepository,
+            AppointmentRepository appointmentRepository,
+            Clock clock) {
         this.doctorRepository = doctorRepository;
         this.slotRepository = slotRepository;
         this.userRepository = userRepository;
         this.departmentRepository = departmentRepository;
         this.appointmentRepository = appointmentRepository;
+        this.clock = clock != null ? clock : Clock.system(ZoneId.of("Asia/Kolkata"));
     }
 
     public Map<String, Object> getAllDoctors(String departmentId, String search, int limit) {
@@ -128,16 +149,42 @@ public class DoctorService {
     }
 
     public List<Map<String, Object>> getSlotsByDoctor(String doctorId, String appointmentDate) {
+        String effectiveDate = (appointmentDate != null && !appointmentDate.isBlank())
+                ? appointmentDate.trim()
+                : LocalDate.now(clock).toString();
+
+        LocalDate reqDate = null;
+        try {
+            reqDate = LocalDate.parse(effectiveDate);
+        } catch (Exception ignored) {}
+
+        LocalDate today = LocalDate.now(clock);
+        LocalDateTime currentDateTime = LocalDateTime.now(clock);
+
         List<DoctorSlotDocument> slots = slotRepository.findByDoctorId(doctorId);
         List<Map<String, Object>> result = new ArrayList<>();
         for (DoctorSlotDocument s : slots) {
             String status = s.getStatus();
             if ("BLOCKED".equalsIgnoreCase(status) || "CANCELLED".equalsIgnoreCase(status)) continue;
-            if (appointmentDate != null && !appointmentDate.isBlank()) {
-                status = appointmentRepository.existsByDoctorIdAndSlotIdAndAppointmentDateAndStatusNot(doctorId, s.getId(), appointmentDate, "CANCELLED")
-                        ? "BOOKED"
-                        : "AVAILABLE";
+
+            boolean isBooked = appointmentRepository.existsByDoctorIdAndSlotIdAndAppointmentDateAndStatusNot(
+                    doctorId, s.getId(), effectiveDate, "CANCELLED");
+
+            if (isBooked) {
+                status = "BOOKED";
+            } else if (reqDate != null && reqDate.isBefore(today)) {
+                status = "PASSED";
+            } else if (reqDate != null && reqDate.isEqual(today)) {
+                LocalTime slotTime = DateTimeUtils.parseSlotTime(s.getSlotStart());
+                if (slotTime != null && !LocalDateTime.of(today, slotTime).isAfter(currentDateTime)) {
+                    status = "PASSED";
+                } else {
+                    status = "AVAILABLE";
+                }
+            } else {
+                status = "AVAILABLE";
             }
+
             Map<String, Object> m = new HashMap<>();
             m.put("id", s.getId());
             m.put("doctor_id", s.getDoctorId());

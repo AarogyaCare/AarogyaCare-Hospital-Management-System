@@ -61,4 +61,65 @@ public class EmergencyController {
             @AuthenticationPrincipal UserPrincipal principal) {
         return ResponseEntity.ok(emergencyService.updateStatus(id, request, principal));
     }
+
+    @GetMapping("/requests/{id}")
+    @PreAuthorize("hasAnyRole('NURSE', 'DOCTOR', 'ADMIN', 'RECEPTIONIST', 'PATIENT')")
+    public ResponseEntity<EmergencyDtos.EmergencyDetailResponse> getEmergencyDetail(
+            @PathVariable String id,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseEntity.ok(emergencyService.getEmergencyDetail(id, principal));
+    }
+
+    @PatchMapping("/requests/{id}/assign")
+    @PreAuthorize("hasAnyRole('NURSE', 'DOCTOR', 'ADMIN', 'RECEPTIONIST')")
+    public ResponseEntity<EmergencyDtos.EmergencyDetailResponse> assignCareTeamAndBay(
+            @PathVariable String id,
+            @Valid @RequestBody EmergencyDtos.IncidentAssignRequest request,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseEntity.ok(emergencyService.assignCareTeamAndBay(id, request, principal));
+    }
+
+    @PostMapping("/requests/{id}/interventions")
+    @PreAuthorize("hasAnyRole('NURSE', 'DOCTOR')")
+    public ResponseEntity<EmergencyDtos.EmergencyDetailResponse> recordIntervention(
+            @PathVariable String id,
+            @Valid @RequestBody EmergencyDtos.InterventionRequest request,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseEntity.ok(emergencyService.recordIntervention(id, request, principal));
+    }
+
+    @PatchMapping("/requests/{id}/reassess")
+    @PreAuthorize("hasAnyRole('NURSE', 'DOCTOR')")
+    public ResponseEntity<EmergencyDtos.EmergencyDetailResponse> reassessAcuity(
+            @PathVariable String id,
+            @Valid @RequestBody EmergencyDtos.ReassessRequest request,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseEntity.ok(emergencyService.reassessAcuity(id, request, principal));
+    }
+
+    @PostMapping("/requests/{id}/disposition")
+    @PreAuthorize("hasAnyRole('DOCTOR', 'ADMIN')")
+    public ResponseEntity<EmergencyDtos.EmergencyDetailResponse> concludeDisposition(
+            @PathVariable String id,
+            @Valid @RequestBody EmergencyDtos.DispositionRequest request,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseEntity.ok(emergencyService.concludeDisposition(id, request, principal));
+    }
+
+    @GetMapping("/patient/active")
+    @PreAuthorize("hasRole('PATIENT')")
+    public ResponseEntity<EmergencyDtos.EmergencyDetailResponse> getActivePatientEmergency(
+            @AuthenticationPrincipal UserPrincipal principal) {
+        EmergencyDtos.EmergencyDetailResponse res = emergencyService.getActivePatientEmergency(principal.getId());
+        if (res == null) {
+            return ResponseEntity.noContent().build();
+        }
+        return ResponseEntity.ok(res);
+    }
+
+    @GetMapping("/stats")
+    @PreAuthorize("hasAnyRole('NURSE', 'DOCTOR', 'ADMIN', 'RECEPTIONIST')")
+    public ResponseEntity<EmergencyDtos.EmergencySurgeStatsResponse> getEmergencySurgeStats() {
+        return ResponseEntity.ok(emergencyService.getEmergencySurgeStats());
+    }
 }

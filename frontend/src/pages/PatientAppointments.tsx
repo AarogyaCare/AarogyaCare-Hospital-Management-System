@@ -93,7 +93,8 @@ export default function PatientAppointments() {
       return;
     }
     try {
-      const slots = await api.slots(doctorId);
+      const date = appointment.date || new Date().toISOString().slice(0, 10);
+      const slots = await api.slots(doctorId, date);
       const available = slots.filter((slot: any) => String(slot.status).toUpperCase() === 'AVAILABLE' || !slot.status);
       setAvailableSlots(available);
       setNewSlot(available[0]?.id || available[0]?.slot_id || '');
@@ -106,7 +107,7 @@ export default function PatientAppointments() {
   const handleRescheduleSubmit = async () => {
     if (!rescheduleApt || !newSlot) return;
     try {
-      await api.rescheduleAppointment(rescheduleApt.id, newSlot);
+      await api.rescheduleAppointment(rescheduleApt.id, newSlot, undefined, rescheduleApt.date);
       const rows = await api.appointments();
       setAppointments(rows.map(mapToPatientRecord));
       setNotice('Appointment rescheduled successfully.');
