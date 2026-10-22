@@ -30,6 +30,7 @@ public class PrescriptionDtos {
         String id,
         @JsonProperty("prescription_number") String prescriptionNumber,
         @JsonProperty("patient_id") String patientId,
+        @JsonProperty("patient_name") String patientName,
         @JsonProperty("appointment_id") String appointmentId,
         @JsonProperty("doctor_id") String doctorId,
         @JsonProperty("doctor_name") String doctorName,

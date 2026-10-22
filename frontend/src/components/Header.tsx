@@ -25,6 +25,7 @@ const roleModules: Record<UserRole, { name: string; path: string }[]> = {
   ],
   DOCTOR: [
     { name: 'Clinical', path: '/clinical/workspace' },
+    { name: 'Emergency Desk', path: '/operations/emergency' },
     { name: 'Patient Records', path: '/emr/patients' },
     { name: 'Appointments', path: '/operations/appointments' },
   ],
@@ -34,6 +35,7 @@ const roleModules: Record<UserRole, { name: string; path: string }[]> = {
   ],
   RECEPTIONIST: [
     { name: 'Reception', path: '/reception' },
+    { name: 'Emergency Desk', path: '/operations/emergency' },
     { name: 'Operations', path: '/operations/hub' },
     { name: 'Appointments', path: '/operations/appointments' },
   ],
@@ -41,6 +43,7 @@ const roleModules: Record<UserRole, { name: string; path: string }[]> = {
   BILLING_STAFF: [{ name: 'Billing', path: '/billing/desk' }],
   ADMIN: [
     { name: 'Administration', path: '/admin' },
+    { name: 'Emergency Desk', path: '/operations/emergency' },
     { name: 'User Management', path: '/admin/users' },
     { name: 'System Health', path: '/admin/system-health' },
     { name: 'Audit Reports', path: '/admin/reports' },

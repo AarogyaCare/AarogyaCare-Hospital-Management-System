@@ -25,6 +25,7 @@ public class DoctorDocument {
     private double rating = 4.8;
     private List<String> specializations = new ArrayList<>();
     private double consultationFee = 800.0;
+    private boolean isOnCall = false;
 
     public DoctorDocument() {}
 
@@ -70,4 +71,7 @@ public class DoctorDocument {
 
     public double getConsultationFee() { return consultationFee; }
     public void setConsultationFee(double consultationFee) { this.consultationFee = consultationFee; }
+
+    public boolean isOnCall() { return isOnCall; }
+    public void setOnCall(boolean onCall) { this.isOnCall = onCall; }
 }

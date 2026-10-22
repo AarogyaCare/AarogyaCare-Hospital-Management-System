@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Pill, AlertTriangle, CheckCircle2, Search,
-  Package, RefreshCw, Barcode, ShieldCheck, ArrowRight, Plus, AlertCircle, Printer
+  Package, RefreshCw, Barcode, ShieldCheck, ArrowRight, Plus, AlertCircle, Printer, Filter, X
 } from 'lucide-react';
-import { api, InventoryItemDto, PrescriptionDto } from '../../services/api';
+import { api, InventoryItemDto, PrescriptionDto, PatientDto } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import PrescriptionDispensingSlipModal from '../../components/PrescriptionDispensingSlipModal';
 
@@ -11,6 +11,7 @@ export default function PharmacyInventory() {
   const { user } = useAuth();
   const [inventory, setInventory] = useState<InventoryItemDto[]>([]);
   const [prescriptions, setPrescriptions] = useState<PrescriptionDto[]>([]);
+  const [patientMap, setPatientMap] = useState<Record<string, string>>({});
   const [search, setSearch] = useState('');
   const [rxSearch, setRxSearch] = useState('');
   const [selectedSlipRx, setSelectedSlipRx] = useState<PrescriptionDto | null>(null);
@@ -18,6 +19,10 @@ export default function PharmacyInventory() {
   const [toast, setToast] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [activeTab, setActiveTab] = useState<'all' | 'PENDING' | 'DISPENSED'>('all');
   const [isDispensing, setIsDispensing] = useState<string | null>(null);
+
+  // Inventory Filtering: Stock Status & Category
+  const [stockFilter, setStockFilter] = useState<'ALL' | 'LOW_STOCK' | 'OUT_OF_STOCK' | 'IN_STOCK'>('ALL');
+  const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
 
   // Stock Adjustment Modal
   const [showAdjustModal, setShowAdjustModal] = useState(false);
@@ -35,12 +40,21 @@ export default function PharmacyInventory() {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const [invData, rxData] = await Promise.all([
+      const [invData, rxData, patData] = await Promise.allSettled([
         api.inventory(),
-        api.allPrescriptions()
+        api.allPrescriptions(),
+        api.patients()
       ]);
-      setInventory(invData);
-      setPrescriptions(rxData);
+      if (invData.status === 'fulfilled') setInventory(invData.value);
+      if (rxData.status === 'fulfilled') setPrescriptions(rxData.value);
+      if (patData.status === 'fulfilled') {
+        const map: Record<string, string> = {};
+        patData.value.forEach((p) => {
+          map[p.id] = p.name;
+          if (p.uhid) map[p.uhid] = p.name;
+        });
+        setPatientMap(map);
+      }
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Could not fetch pharmacy records.', 'error');
     } finally {
@@ -80,11 +94,58 @@ export default function PharmacyInventory() {
     }
   };
 
-  const filteredInventory = inventory.filter((item) =>
-    item.name.toLowerCase().includes(search.toLowerCase()) ||
-    (item.code && item.code.toLowerCase().includes(search.toLowerCase())) ||
-    item.category.toLowerCase().includes(search.toLowerCase())
-  );
+  // Extract distinct drug categories
+  const categories = useMemo(() => {
+    const set = new Set<string>();
+    inventory.forEach((item) => {
+      if (item.category && item.category.trim()) {
+        set.add(item.category.trim());
+      }
+    });
+    return Array.from(set).sort();
+  }, [inventory]);
+
+  const lowStockCount = useMemo(() => {
+    return inventory.filter((i) => i.current_stock > 0 && i.current_stock <= i.minimum_threshold).length;
+  }, [inventory]);
+
+  const outOfStockCount = useMemo(() => {
+    return inventory.filter((i) => i.current_stock === 0).length;
+  }, [inventory]);
+
+  const inStockCount = useMemo(() => {
+    return inventory.filter((i) => i.current_stock > i.minimum_threshold).length;
+  }, [inventory]);
+
+  const filteredInventory = useMemo(() => {
+    return inventory.filter((item) => {
+      // Stock Status Filter
+      if (stockFilter === 'LOW_STOCK') {
+        if (item.current_stock === 0 || item.current_stock > item.minimum_threshold) return false;
+      } else if (stockFilter === 'OUT_OF_STOCK') {
+        if (item.current_stock > 0) return false;
+      } else if (stockFilter === 'IN_STOCK') {
+        if (item.current_stock <= item.minimum_threshold) return false;
+      }
+
+      // Category Filter
+      if (selectedCategory !== 'ALL') {
+        if (item.category.trim().toLowerCase() !== selectedCategory.trim().toLowerCase()) {
+          return false;
+        }
+      }
+
+      // Text Search Query
+      if (!search.trim()) return true;
+      const q = search.toLowerCase();
+      return (
+        item.name.toLowerCase().includes(q) ||
+        (item.code && item.code.toLowerCase().includes(q)) ||
+        (item.brand_name && item.brand_name.toLowerCase().includes(q)) ||
+        item.category.toLowerCase().includes(q)
+      );
+    });
+  }, [inventory, stockFilter, selectedCategory, search]);
 
   const filteredPrescriptions = prescriptions.filter((rx) => {
     const statusUpper = String(rx.status).toUpperCase();
@@ -98,14 +159,14 @@ export default function PharmacyInventory() {
 
     if (!rxSearch.trim()) return true;
     const q = rxSearch.toLowerCase();
+    const patName = (rx.patient_name || patientMap[rx.patient_id] || '').toLowerCase();
     const rxNo = (rx.prescription_number || '').toLowerCase();
     const patId = (rx.patient_id || '').toLowerCase();
     const docName = (rx.doctor_name || '').toLowerCase();
     const medMatch = rx.items?.some((it) => it.medicine_name.toLowerCase().includes(q));
-    return rxNo.includes(q) || patId.includes(q) || docName.includes(q) || Boolean(medMatch);
+    return rxNo.includes(q) || patId.includes(q) || patName.includes(q) || docName.includes(q) || Boolean(medMatch);
   });
 
-  const lowStockCount = inventory.filter((i) => i.current_stock <= i.minimum_threshold).length;
 
   return (
     <div className="max-w-7xl mx-auto px-4 md:px-8 py-8 space-y-6">
@@ -137,12 +198,17 @@ export default function PharmacyInventory() {
             <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
             <span>Refresh</span>
           </button>
-          <span className={`px-3 py-1.5 border rounded-xl text-xs font-semibold flex items-center gap-1.5 ${
-            lowStockCount > 0 ? 'bg-rose-500/20 border-rose-400/30 text-rose-300' : 'bg-emerald-500/20 border-emerald-400/30 text-emerald-300'
-          }`}>
+          <button
+            type="button"
+            onClick={() => setStockFilter(stockFilter === 'LOW_STOCK' ? 'ALL' : 'LOW_STOCK')}
+            className={`px-3 py-1.5 border rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer hover:opacity-90 ${
+              lowStockCount > 0 ? 'bg-rose-500/20 border-rose-400/30 text-rose-300' : 'bg-emerald-500/20 border-emerald-400/30 text-emerald-300'
+            } ${stockFilter === 'LOW_STOCK' ? 'ring-2 ring-rose-400 ring-offset-2 ring-offset-[#002043]' : ''}`}
+            title="Click to toggle low stock filter"
+          >
             <AlertTriangle className="w-3.5 h-3.5" />
             <span>{lowStockCount} Low Stock Alerts</span>
-          </span>
+          </button>
           <button
             onClick={() => {
               if (inventory.length > 0) setAdjustMedId(inventory[0].id);
@@ -232,9 +298,20 @@ export default function PharmacyInventory() {
                       </span>
                     </div>
 
-                    <p className="text-slate-600 text-[11px]">
-                      Doctor: <strong>{rx.doctor_name || 'Clinician'}</strong> • Patient ID: {rx.patient_id}
-                    </p>
+                    {(() => {
+                      const patName = rx.patient_name || patientMap[rx.patient_id] || 'Patient';
+                      return (
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-slate-700">
+                          <div>
+                            Patient: <strong className="font-extrabold text-slate-900 text-xs">{patName}</strong> <span className="font-mono text-slate-600 font-bold">({rx.patient_id})</span>
+                          </div>
+                          <span className="text-slate-300">•</span>
+                          <div className="text-slate-500">
+                            Doctor: <strong className="text-slate-800 font-semibold">{rx.doctor_name || 'Clinician'}</strong>
+                          </div>
+                        </div>
+                      );
+                    })()}
 
                     {/* Prescribed Items list */}
                     <div className="py-1 space-y-1">
@@ -273,7 +350,10 @@ export default function PharmacyInventory() {
                           </span>
                           <button
                             type="button"
-                            onClick={() => setSelectedSlipRx(rx)}
+                            onClick={() => setSelectedSlipRx({
+                              ...rx,
+                              patient_name: rx.patient_name || patientMap[rx.patient_id] || 'Patient'
+                            })}
                             className="px-2.5 py-1 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-lg text-[10px] font-bold flex items-center gap-1 transition"
                           >
                             <Printer className="w-3 h-3 text-teal-600" />
@@ -291,22 +371,135 @@ export default function PharmacyInventory() {
 
         {/* Drug Stock Inventory Monitor (7 cols) */}
         <div className="lg:col-span-7 bg-white rounded-3xl border border-slate-200 p-6 shadow-sm space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+          {/* Controls Bar: Title, Category Selector & Search */}
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3 border-b border-slate-100">
             <div>
               <h3 className="text-base font-bold text-slate-900">Hospital Pharmacy Formulary &amp; Stock</h3>
               <p className="text-xs text-slate-500">Real-time inventory levels synchronized with Spring Boot &amp; MongoDB.</p>
             </div>
 
-            <div className="relative w-full sm:w-56">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search drug or code..."
-                className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-[#002043]"
-              />
+            <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
+              {/* Category Dropdown Filter */}
+              <div className="relative w-full sm:w-auto">
+                <select
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  className="w-full sm:w-auto pl-3 pr-8 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:ring-2 focus:ring-[#002043] appearance-none cursor-pointer"
+                >
+                  <option value="ALL">All Categories ({categories.length})</option>
+                  {categories.map((cat) => (
+                    <option key={cat} value={cat}>
+                      {cat}
+                    </option>
+                  ))}
+                </select>
+                <Filter className="w-3 h-3 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
+
+              {/* Text Search */}
+              <div className="relative w-full sm:w-48">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search drug or code..."
+                  className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-[#002043]"
+                />
+              </div>
             </div>
+          </div>
+
+          {/* Stock Category Filter Pills & Reset */}
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-1 pb-1">
+            <div className="flex flex-wrap items-center gap-1.5 text-xs">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mr-1">Stock Level:</span>
+              <button
+                type="button"
+                onClick={() => setStockFilter('ALL')}
+                className={`px-3 py-1 rounded-xl font-bold transition flex items-center gap-1.5 ${
+                  stockFilter === 'ALL'
+                    ? 'bg-[#002043] text-white shadow-xs'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                <span>All</span>
+                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                  stockFilter === 'ALL' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
+                }`}>
+                  {inventory.length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setStockFilter('LOW_STOCK')}
+                className={`px-3 py-1 rounded-xl font-bold transition flex items-center gap-1.5 ${
+                  stockFilter === 'LOW_STOCK'
+                    ? 'bg-amber-600 text-white shadow-xs'
+                    : 'bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200'
+                }`}
+              >
+                <AlertTriangle className="w-3 h-3" />
+                <span>Low Stock</span>
+                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono font-black ${
+                  stockFilter === 'LOW_STOCK' ? 'bg-white/25 text-white' : 'bg-amber-200/60 text-amber-900'
+                }`}>
+                  {lowStockCount}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setStockFilter('OUT_OF_STOCK')}
+                className={`px-3 py-1 rounded-xl font-bold transition flex items-center gap-1.5 ${
+                  stockFilter === 'OUT_OF_STOCK'
+                    ? 'bg-rose-600 text-white shadow-xs'
+                    : 'bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200'
+                }`}
+              >
+                <AlertCircle className="w-3 h-3" />
+                <span>Out of Stock</span>
+                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono font-black ${
+                  stockFilter === 'OUT_OF_STOCK' ? 'bg-white/25 text-white' : 'bg-rose-200/60 text-rose-900'
+                }`}>
+                  {outOfStockCount}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setStockFilter('IN_STOCK')}
+                className={`px-3 py-1 rounded-xl font-bold transition flex items-center gap-1.5 ${
+                  stockFilter === 'IN_STOCK'
+                    ? 'bg-emerald-700 text-white shadow-xs'
+                    : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'
+                }`}
+              >
+                <CheckCircle2 className="w-3 h-3" />
+                <span>Sufficient</span>
+                <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono font-black ${
+                  stockFilter === 'IN_STOCK' ? 'bg-white/25 text-white' : 'bg-emerald-200/60 text-emerald-900'
+                }`}>
+                  {inStockCount}
+                </span>
+              </button>
+            </div>
+
+            {(stockFilter !== 'ALL' || selectedCategory !== 'ALL' || search.trim() !== '') && (
+              <button
+                type="button"
+                onClick={() => {
+                  setStockFilter('ALL');
+                  setSelectedCategory('ALL');
+                  setSearch('');
+                }}
+                className="text-[11px] font-semibold text-slate-500 hover:text-slate-800 flex items-center gap-1 px-2.5 py-1 rounded-lg hover:bg-slate-100 transition"
+              >
+                <X className="w-3 h-3" />
+                <span>Reset Filters</span>
+              </button>
+            )}
           </div>
 
           {isLoading ? (
@@ -328,8 +521,8 @@ export default function PharmacyInventory() {
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {filteredInventory.map((item) => {
-                    const isLow = item.current_stock <= item.minimum_threshold;
                     const isCritical = item.current_stock === 0;
+                    const isLow = !isCritical && item.current_stock <= item.minimum_threshold;
                     return (
                       <tr key={item.id} className="hover:bg-slate-50/50">
                         <td className="px-4 py-2.5">

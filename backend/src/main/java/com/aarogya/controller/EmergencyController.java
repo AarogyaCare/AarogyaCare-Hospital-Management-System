@@ -8,6 +8,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -26,10 +27,17 @@ public class EmergencyController {
     }
 
     @GetMapping("/requests")
-    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('NURSE', 'DOCTOR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('NURSE', 'DOCTOR', 'ADMIN', 'RECEPTIONIST')")
     public ResponseEntity<List<EmergencyDtos.EmergencyResponse>> getEmergencyQueue(
             @RequestParam(required = false) String status) {
         return ResponseEntity.ok(emergencyService.getEmergencyQueue(status));
+    }
+
+    @GetMapping("/doctor/{doctorId}")
+    @PreAuthorize("hasAnyRole('DOCTOR', 'ADMIN', 'NURSE')")
+    public ResponseEntity<List<EmergencyDtos.EmergencyResponse>> getDoctorEmergencyQueue(
+            @PathVariable String doctorId) {
+        return ResponseEntity.ok(emergencyService.getEmergencyQueueForDoctor(doctorId));
     }
 
     @PostMapping("/requests")
@@ -46,11 +54,11 @@ public class EmergencyController {
     }
 
     @PatchMapping("/requests/{id}/status")
-    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('NURSE', 'DOCTOR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('NURSE', 'DOCTOR', 'ADMIN', 'RECEPTIONIST')")
     public ResponseEntity<EmergencyDtos.EmergencyResponse> updateStatus(
             @PathVariable String id,
             @Valid @RequestBody EmergencyDtos.EmergencyStatusUpdateRequest request,
             @AuthenticationPrincipal UserPrincipal principal) {
-        return ResponseEntity.ok(emergencyService.updateStatus(id, request.status(), principal));
+        return ResponseEntity.ok(emergencyService.updateStatus(id, request, principal));
     }
 }

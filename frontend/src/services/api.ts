@@ -91,6 +91,7 @@ export interface PrescriptionDto {
   id: string;
   prescription_number: string;
   patient_id: string;
+  patient_name?: string;
   appointment_id?: string;
   doctor_id?: string;
   doctor_name?: string;
@@ -150,6 +151,36 @@ export interface InvoiceDto {
   created_at?: string;
 }
 
+export interface EmergencyDto {
+  id: string;
+  patient_name: string;
+  patient_id?: string;
+  doctor_id?: string;
+  doctor_name?: string;
+  appointment_id?: string;
+  contact_number?: string;
+  triage_level: 'RED' | 'YELLOW' | 'GREEN';
+  chief_complaint: string;
+  vital_signs?: string;
+  status: string;
+  priority_score: number;
+  notes?: string;
+  created_at: string;
+}
+
+export interface EmergencyCreatePayload {
+  patient_name: string;
+  patient_id?: string;
+  doctor_id?: string;
+  doctor_name?: string;
+  contact_number?: string;
+  triage_level: string;
+  chief_complaint: string;
+  vital_signs?: string;
+  notes?: string;
+  [key: string]: any;
+}
+
 export interface AiChatResponse {
   reply?: string;
   success: boolean;
@@ -189,7 +220,16 @@ export const api = {
   createStaff: (payload: unknown) => apiRequest<any>('/api/v1/auth/staff', { method: 'POST', body: JSON.stringify(payload) }),
 
   // Doctors & Department
-  doctors: (deptId?: string, search?: string) => apiRequest<{ items: any[]; total: number }>(`/api/v1/doctors?limit=50${deptId ? `&department_id=${encodeURIComponent(deptId)}` : ''}${search ? `&search=${encodeURIComponent(search)}` : ''}`),
+  doctors: (deptId?: string, search?: string, onCall?: boolean) =>
+    apiRequest<{ items: any[]; total: number }>(
+      `/api/v1/doctors?limit=50${deptId ? `&department_id=${encodeURIComponent(deptId)}` : ''}${search ? `&search=${encodeURIComponent(search)}` : ''}${onCall !== undefined ? `&on_call=${onCall}` : ''}`
+    ),
+  onCallDoctors: () => apiRequest<{ items: any[]; total: number }>('/api/v1/doctors?on_call=true&limit=50'),
+  toggleDoctorOnCall: (id: string, isOnCall: boolean) =>
+    apiRequest<any>(`/api/v1/doctors/${encodeURIComponent(id)}/oncall`, {
+      method: 'PATCH',
+      body: JSON.stringify({ is_on_call: isOnCall }),
+    }),
   doctor: (id: string) => apiRequest<any>(`/api/v1/doctors/${encodeURIComponent(id)}`),
   slots: (id: string, date?: string) => apiRequest<any[]>(`/api/v1/doctors/${encodeURIComponent(id)}/slots${date ? `?date=${encodeURIComponent(date)}` : ''}`),
   departments: () => apiRequest<any[]>('/api/v1/departments'),
@@ -299,9 +339,22 @@ export const api = {
   recordLabResult: (id: string, payload: unknown) => apiRequest<any>(`/api/v1/lab/orders/${encodeURIComponent(id)}/results`, { method: 'POST', body: JSON.stringify(payload) }),
 
   // Emergency
-  emergencyQueue: (status?: string) => apiRequest<any[]>(`/api/v1/emergency/requests${status ? `?status=${encodeURIComponent(status)}` : ''}`),
-  createEmergency: (payload: unknown) => apiRequest<any>('/api/v1/emergency/requests', { method: 'POST', body: JSON.stringify(payload) }),
-  updateEmergency: (id: string, status: string) => apiRequest<any>(`/api/v1/emergency/requests/${encodeURIComponent(id)}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+  emergencyQueue: (status?: string) =>
+    apiRequest<EmergencyDto[]>(`/api/v1/emergency/requests${status ? `?status=${encodeURIComponent(status)}` : ''}`),
+  doctorEmergencyQueue: (doctorId: string) =>
+    apiRequest<EmergencyDto[]>(`/api/v1/emergency/doctor/${encodeURIComponent(doctorId)}`),
+  createEmergency: (payload: EmergencyCreatePayload) =>
+    apiRequest<EmergencyDto>('/api/v1/emergency/requests', { method: 'POST', body: JSON.stringify(payload) }),
+  updateEmergency: (id: string, status: string) =>
+    apiRequest<EmergencyDto>(`/api/v1/emergency/requests/${encodeURIComponent(id)}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    }),
+  updateEmergencyStatus: (id: string, payload: { status: string; doctor_id?: string; doctor_notes?: string }) =>
+    apiRequest<EmergencyDto>(`/api/v1/emergency/requests/${encodeURIComponent(id)}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    }),
 
   // Labs & System Design
   autocomplete: (q: string, limit = 10) => apiRequest<any>(`/api/v1/autocomplete?q=${encodeURIComponent(q)}&limit=${limit}`),

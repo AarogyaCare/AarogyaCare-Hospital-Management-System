@@ -17,6 +17,14 @@ public class EmergencyRequestDocument {
     @Indexed
     private String patientId;
 
+    @Indexed
+    private String doctorId;
+
+    private String doctorName;
+
+    @Indexed
+    private String appointmentId;
+
     private String contactNumber;
 
     @Indexed
@@ -24,9 +32,10 @@ public class EmergencyRequestDocument {
 
     private String chiefComplaint;
     private String vitalSigns;
+    private String notes;
 
     @Indexed
-    private String status = "INCOMING"; // "INCOMING", "TRIAGED", "STABILIZING", "ADMITTED", "DISCHARGED"
+    private String status = "INCOMING"; // "INCOMING", "ASSIGNED", "ATTENDING", "STABILIZED", "ADMITTED", "DISCHARGED"
 
     @Indexed
     private int priorityScore = 1; // 1 for RED, 2 for YELLOW, 3 for GREEN
@@ -59,6 +68,15 @@ public class EmergencyRequestDocument {
     public String getPatientId() { return patientId; }
     public void setPatientId(String patientId) { this.patientId = patientId; }
 
+    public String getDoctorId() { return doctorId; }
+    public void setDoctorId(String doctorId) { this.doctorId = doctorId; }
+
+    public String getDoctorName() { return doctorName; }
+    public void setDoctorName(String doctorName) { this.doctorName = doctorName; }
+
+    public String getAppointmentId() { return appointmentId; }
+    public void setAppointmentId(String appointmentId) { this.appointmentId = appointmentId; }
+
     public String getContactNumber() { return contactNumber; }
     public void setContactNumber(String contactNumber) { this.contactNumber = contactNumber; }
 
@@ -73,6 +91,9 @@ public class EmergencyRequestDocument {
 
     public String getVitalSigns() { return vitalSigns; }
     public void setVitalSigns(String vitalSigns) { this.vitalSigns = vitalSigns; }
+
+    public String getNotes() { return notes; }
+    public void setNotes(String notes) { this.notes = notes; }
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }

@@ -33,6 +33,7 @@ import PharmacyInventory from './pages/operations/PharmacyInventory';
 import BillingFinancialDesk from './pages/operations/BillingFinancialDesk';
 import OperationsHub from './pages/operations/OperationsHub';
 import AppointmentManagement from './pages/operations/AppointmentManagement';
+import EmergencyDesk from './pages/operations/EmergencyDesk';
 
 // Administration Pages
 import AdministratorDashboard from './pages/admin/AdministratorDashboard';
@@ -124,6 +125,8 @@ export default function App() {
               <Route path="/operations/hub" element={authenticated('RECEPTIONIST', 'ADMIN')(<OperationsHub />)} />
               <Route path="/operations" element={<Navigate to="/operations/hub" replace />} />
               <Route path="/operations/appointments" element={authenticated('RECEPTIONIST', 'DOCTOR', 'ADMIN')(<AppointmentManagement />)} />
+              <Route path="/operations/emergency" element={authenticated('RECEPTIONIST', 'DOCTOR', 'NURSE', 'ADMIN')(<EmergencyDesk />)} />
+              <Route path="/emergency" element={<Navigate to="/operations/emergency" replace />} />
 
               {/* Administration Screens (21-24) */}
               <Route path="/admin" element={authenticated('ADMIN')(<AdministratorDashboard />)} />

@@ -151,11 +151,11 @@ export default function TaxInvoiceReceiptModal({ invoice, onClose }: Props) {
             </div>
             <div>
               <span className="text-slate-400 block text-[10px] uppercase font-bold">Patient Name</span>
-              <span className="font-bold text-slate-900">{invoice.patientName}</span>
+              <span className="font-extrabold text-slate-900 text-sm block">{invoice.patientName}</span>
             </div>
             <div>
-              <span className="text-slate-400 block text-[10px] uppercase font-bold">UHID / MRN</span>
-              <span className="font-mono font-bold text-slate-900">{invoice.patientUhid || 'AC-2026-OPD'}</span>
+              <span className="text-slate-400 block text-[10px] uppercase font-bold">Patient ID / UHID</span>
+              <span className="font-mono font-extrabold text-slate-900 text-sm block">{invoice.patientUhid || 'AC-2026-OPD'}</span>
             </div>
             <div>
               <span className="text-slate-400 block text-[10px] uppercase font-bold">Department</span>

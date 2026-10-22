@@ -89,8 +89,9 @@ export default function PrescriptionDispensingSlipModal({ prescription, onClose 
               <span className="font-bold text-slate-800">{prescription.doctor_name || 'Consultant Physician'}</span>
             </div>
             <div>
-              <span className="text-slate-400 block text-[10px] uppercase font-bold">Patient ID / UHID</span>
-              <span className="font-mono font-bold text-slate-900">{prescription.patient_id}</span>
+              <span className="text-slate-400 block text-[10px] uppercase font-bold">Patient Details</span>
+              <span className="font-extrabold text-slate-900 block">{prescription.patient_name || 'Patient'}</span>
+              <span className="font-mono font-bold text-slate-600 text-[11px]">ID: {prescription.patient_id}</span>
             </div>
             <div>
               <span className="text-slate-400 block text-[10px] uppercase font-bold">Dispensed At</span>

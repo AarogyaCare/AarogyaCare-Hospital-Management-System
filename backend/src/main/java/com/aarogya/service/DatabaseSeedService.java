@@ -133,6 +133,7 @@ public class DatabaseSeedService {
                 userRepository.save(existingBilling);
             }
             ensureDoctorConsultationFees();
+            ensureOnCallDoctors();
             return;
         }
 
@@ -485,5 +486,26 @@ public class DatabaseSeedService {
                 doctorRepository.save(doc);
             }
         }
+    }
+
+    private void ensureOnCallDoctors() {
+        if (doctorRepository.findByIsOnCall(true).isEmpty()) {
+            doctorRepository.findById("doc-1").ifPresent(d -> {
+                d.setOnCall(true);
+                doctorRepository.save(d);
+            });
+            doctorRepository.findById("doc-3").ifPresent(d -> {
+                d.setOnCall(true);
+                doctorRepository.save(d);
+            });
+        }
+        emergencyRepository.findById("em-1").ifPresent(em -> {
+            if (em.getDoctorId() == null) {
+                em.setDoctorId("doc-1");
+                em.setDoctorName("Dr. Ramanathan Sundaram");
+                em.setStatus("ASSIGNED");
+                emergencyRepository.save(em);
+            }
+        });
     }
 }

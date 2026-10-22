@@ -17,6 +17,22 @@ export default function AdministratorDashboard() {
     lowStockMedicines: 0,
   });
   const [isLoading, setIsLoading] = useState(true);
+  const [doctorsList, setDoctorsList] = useState<any[]>([]);
+  const [togglingDocId, setTogglingDocId] = useState<string | null>(null);
+
+  const handleToggleOnCall = async (doctorId: string, currentVal: boolean) => {
+    setTogglingDocId(doctorId);
+    try {
+      await api.toggleDoctorOnCall(doctorId, !currentVal);
+      setDoctorsList((prev) =>
+        prev.map((d) => (d.id === doctorId ? { ...d, is_on_call: !currentVal } : d))
+      );
+    } catch (err) {
+      alert('Failed to update doctor on-call status');
+    } finally {
+      setTogglingDocId(null);
+    }
+  };
 
   const loadMetrics = async () => {
     setIsLoading(true);
@@ -51,6 +67,7 @@ export default function AdministratorDashboard() {
         totalMedicines: inventory.length,
         lowStockMedicines: lowStock,
       });
+      setDoctorsList(docs);
     } finally {
       setIsLoading(false);
     }
@@ -85,6 +102,12 @@ export default function AdministratorDashboard() {
             <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
             <span>Sync</span>
           </button>
+          <Link
+            to="/operations/emergency"
+            className="px-3.5 py-2 bg-rose-600/30 hover:bg-rose-600/50 border border-rose-400/40 text-rose-200 rounded-xl text-xs font-semibold backdrop-blur-md transition flex items-center gap-1.5"
+          >
+            <span>🚨 Emergency Desk</span>
+          </Link>
           <Link
             to="/admin/users"
             className="px-3.5 py-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-xl text-xs font-semibold backdrop-blur-md transition"
@@ -195,7 +218,79 @@ export default function AdministratorDashboard() {
           </div>
         </div>
 
-        {/* Operational Overview */}
+        {/* Emergency On-Call Doctor Duty Management */}
+      <div className="rounded-3xl border border-white/80 bg-white/85 backdrop-blur-xl p-6 shadow-sm space-y-4">
+        <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-base font-bold text-slate-900">🚨 Emergency On-Call Doctor Duty Roster</span>
+              <span className="px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 text-[10px] font-bold">
+                {doctorsList.filter((d) => d.is_on_call).length} On-Call Now
+              </span>
+            </div>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Designate emergency doctors on active on-call duty for immediate patient assignment and intake.
+            </p>
+          </div>
+          <Link
+            to="/operations/emergency"
+            className="text-xs text-rose-700 hover:text-rose-900 font-bold underline"
+          >
+            Open Emergency Desk &rarr;
+          </Link>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
+          {doctorsList.map((doc) => (
+            <div
+              key={doc.id}
+              className={`p-4 rounded-2xl border transition flex items-center justify-between gap-3 ${
+                doc.is_on_call
+                  ? 'bg-rose-50/60 border-rose-200 ring-1 ring-rose-300'
+                  : 'bg-slate-50/70 border-slate-200'
+              }`}
+            >
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-xs text-slate-900 truncate">
+                    {doc.full_name || 'Dr. Specialist'}
+                  </span>
+                  {doc.is_on_call && (
+                    <span className="px-1.5 py-0.2 bg-rose-600 text-white rounded text-[9px] font-black uppercase tracking-wider">
+                      ON-CALL
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-slate-500 truncate">
+                  {doc.department_name || 'General'} &bull; {doc.room_number || 'OPD'}
+                </p>
+                <p className="text-[10px] text-slate-400 truncate">
+                  {doc.qualification || 'Consultant Specialist'}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                disabled={togglingDocId === doc.id}
+                onClick={() => handleToggleOnCall(doc.id, !!doc.is_on_call)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition shrink-0 ${
+                  doc.is_on_call
+                    ? 'bg-rose-600 hover:bg-rose-700 text-white shadow-sm'
+                    : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-300'
+                }`}
+              >
+                {togglingDocId === doc.id
+                  ? 'Updating...'
+                  : doc.is_on_call
+                  ? 'Active On-Call'
+                  : 'Set On-Call'}
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Operational Overview */}
         <div className="rounded-3xl border border-white/80 bg-white/85 backdrop-blur-xl p-6 shadow-sm space-y-4 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">

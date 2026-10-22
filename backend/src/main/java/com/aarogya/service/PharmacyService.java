@@ -26,6 +26,8 @@ import com.aarogya.model.PrescriptionDocument;
 import com.aarogya.model.UserDocument;
 import com.aarogya.repository.DoctorRepository;
 import com.aarogya.repository.PrescriptionRepository;
+import com.aarogya.repository.PatientRepository;
+import com.aarogya.model.PatientDocument;
 import com.aarogya.repository.UserRepository;
 import com.aarogya.systemdesign.cache.CacheService;
 
@@ -36,6 +38,7 @@ public class PharmacyService {
     private final InventoryTransactionRepository transactionRepository;
     private final IdempotencyRecordRepository idempotencyRepository;
     private final PrescriptionRepository prescriptionRepository;
+    private final PatientRepository patientRepository;
     private final UserRepository userRepository;
     private final DoctorRepository doctorRepository;
     private final CacheService cacheService;
@@ -50,6 +53,7 @@ public class PharmacyService {
             InventoryTransactionRepository transactionRepository,
             IdempotencyRecordRepository idempotencyRepository,
             PrescriptionRepository prescriptionRepository,
+            PatientRepository patientRepository,
             UserRepository userRepository,
             DoctorRepository doctorRepository,
             CacheService cacheService,
@@ -59,6 +63,7 @@ public class PharmacyService {
         this.transactionRepository = transactionRepository;
         this.idempotencyRepository = idempotencyRepository;
         this.prescriptionRepository = prescriptionRepository;
+        this.patientRepository = patientRepository;
         this.userRepository = userRepository;
         this.doctorRepository = doctorRepository;
         this.cacheService = cacheService;
@@ -370,10 +375,22 @@ public class PharmacyService {
             ));
         }
 
+        String patientName = "Patient";
+        if (rx.getPatientId() != null) {
+            PatientDocument p = patientRepository.findById(rx.getPatientId()).orElse(null);
+            if (p != null && p.getUserId() != null) {
+                UserDocument u = userRepository.findById(p.getUserId()).orElse(null);
+                if (u != null && u.getFullName() != null && !u.getFullName().isBlank()) {
+                    patientName = u.getFullName();
+                }
+            }
+        }
+
         return new PrescriptionDtos.PrescriptionResponse(
                 rx.getId(),
                 rx.getPrescriptionNumber(),
                 rx.getPatientId(),
+                patientName,
                 rx.getAppointmentId(),
                 rx.getDoctorId(),
                 doctorName,

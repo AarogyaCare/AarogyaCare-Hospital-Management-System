@@ -296,10 +296,22 @@ public class PatientRecordService {
             ));
         }
 
+        String patientName = "Patient";
+        if (rx.getPatientId() != null) {
+            PatientDocument p = patientRepository.findById(rx.getPatientId()).orElse(null);
+            if (p != null && p.getUserId() != null) {
+                UserDocument u = userRepository.findById(p.getUserId()).orElse(null);
+                if (u != null && u.getFullName() != null && !u.getFullName().isBlank()) {
+                    patientName = u.getFullName();
+                }
+            }
+        }
+
         return new PrescriptionDtos.PrescriptionResponse(
                 rx.getId(),
                 rx.getPrescriptionNumber(),
                 rx.getPatientId(),
+                patientName,
                 rx.getAppointmentId(),
                 rx.getDoctorId(),
                 doctorName,

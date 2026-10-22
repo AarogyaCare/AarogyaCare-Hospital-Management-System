@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Building2, Users, Printer, PhoneCall, AlertTriangle,
   CheckCircle2, Clock, MapPin, Search, ArrowRight, ShieldAlert, Plus, RefreshCw, AlertCircle
@@ -183,12 +184,12 @@ export default function ReceptionFrontDesk() {
     setEmergencyAlert(true);
     try {
       await api.createEmergency({
-        caller_name: 'Reception Front Desk',
-        contact_phone: '+91 44 2829 0000',
-        emergency_type: 'TRAUMA_CODE_RED',
-        location: 'Medora Main Entrance Bay',
-        severity_level: 'CRITICAL',
-        notes: 'Inbound code red trauma alert triggered by front desk receptionist.'
+        patient_name: 'Code Red Trauma Patient (Bay 1)',
+        contact_number: '+91 44 2829 0000',
+        triage_level: 'RED',
+        chief_complaint: 'Inbound code red trauma alert triggered by front desk receptionist.',
+        vital_signs: 'BP: Critical, HR: Tachycardic, SpO2: Pending',
+        notes: 'Dispatched from Main Entrance Bay to On-Call Emergency Doctor'
       });
       showToast('RED CODE DISPATCHED: Trauma bay, crash cart, and on-call team alerted.');
     } catch {
