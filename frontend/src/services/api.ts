@@ -61,6 +61,7 @@ export interface AppointmentDto {
   triage_notes?: string;
   triaged_by?: string;
   triaged_at?: string;
+  short_url?: string;
 }
 
 export interface ClinicalNoteDto {
@@ -162,6 +163,124 @@ export interface AiStatusResponse {
   model: string;
   message: string;
 }
+
+export interface TimelineEventDto {
+  timestamp: string;
+  author: string;
+  role: string;
+  event_type: string;
+  description: string;
+}
+
+export interface InterventionDto {
+  id: string;
+  timestamp: string;
+  author: string;
+  role: string;
+  type: string;
+  notes: string;
+  vitals_recorded?: string;
+}
+
+export interface EmergencyIncidentDetailDto {
+  id: string;
+  incident_number: string;
+  patient_name: string;
+  patient_id?: string;
+  contact_number: string;
+  triage_level: string;
+  chief_complaint: string;
+  vital_signs?: string;
+  status: string;
+  priority_score: number;
+  created_at: string;
+  updated_at?: string;
+  location?: string;
+  caller_name?: string;
+  emergency_type?: string;
+  notes?: string;
+  is_provisional?: boolean;
+  assigned_doctor_id?: string;
+  assigned_doctor_name?: string;
+  assigned_nurse_id?: string;
+  assigned_nurse_name?: string;
+  assigned_bay?: string;
+  disposition?: string;
+  disposition_notes?: string;
+  destination_ward?: string;
+  closed_at?: string;
+  closed_by?: string;
+  timeline: TimelineEventDto[];
+  interventions: InterventionDto[];
+}
+
+export interface EmergencySurgeStatsDto {
+  active_incidents: number;
+  critical_red_count: number;
+  urgent_yellow_count: number;
+  awaiting_triage_count: number;
+  stabilizing_count: number;
+  allocated_bays_count: number;
+}
+
+export interface ArticleSectionDto {
+  heading: string;
+  content: string;
+  bullet_points: string[];
+}
+
+export interface ResourcePreviewDto {
+  id: string;
+  url: string;
+  title: string;
+  domain: string;
+  source_name: string;
+  category: string;
+  specialty: string;
+  published_date: string;
+  indexed_at: string;
+  content_snippet: string;
+  full_text: string;
+  sections: ArticleSectionDto[];
+  safe_outlinks: string[];
+  disclaimer: string;
+}
+
+export interface MedicalKnowledgeItemDto {
+  id: string;
+  url: string;
+  title: string;
+  domain: string;
+  source_name: string;
+  category: string;
+  specialty: string;
+  content_snippet: string;
+  indexed_at: string;
+  section_count: number;
+}
+
+export interface MedicalKnowledgeSearchResponse {
+  query: string;
+  category: string;
+  specialty: string;
+  total_results: number;
+  items: MedicalKnowledgeItemDto[];
+  routed_cache_node: string;
+  cache_hit: boolean;
+  cache_key: string;
+  search_latency_ms: number;
+}
+
+export interface KnowledgeSourceDto {
+  id: string;
+  domain: string;
+  name: string;
+  seed_url: string;
+  status: string;
+  last_crawled_at: string;
+  documents_count: number;
+}
+
 
 export async function apiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
   const token = localStorage.getItem('aarogya_access_token');
@@ -298,10 +417,21 @@ export const api = {
   updateLabStatus: (id: string, payload: unknown) => apiRequest<any>(`/api/v1/lab/orders/${encodeURIComponent(id)}/status`, { method: 'PATCH', body: JSON.stringify(payload) }),
   recordLabResult: (id: string, payload: unknown) => apiRequest<any>(`/api/v1/lab/orders/${encodeURIComponent(id)}/results`, { method: 'POST', body: JSON.stringify(payload) }),
 
-  // Emergency
+  // Emergency Command Center
   emergencyQueue: (status?: string) => apiRequest<any[]>(`/api/v1/emergency/requests${status ? `?status=${encodeURIComponent(status)}` : ''}`),
+  emergencyDetail: (id: string) => apiRequest<EmergencyIncidentDetailDto>(`/api/v1/emergency/requests/${encodeURIComponent(id)}`),
   createEmergency: (payload: unknown) => apiRequest<any>('/api/v1/emergency/requests', { method: 'POST', body: JSON.stringify(payload) }),
   updateEmergency: (id: string, status: string) => apiRequest<any>(`/api/v1/emergency/requests/${encodeURIComponent(id)}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+  assignEmergencyCareTeam: (id: string, payload: { doctor_id?: string; doctor_name?: string; nurse_id?: string; nurse_name?: string; bay?: string }) =>
+    apiRequest<EmergencyIncidentDetailDto>(`/api/v1/emergency/requests/${encodeURIComponent(id)}/assign`, { method: 'PATCH', body: JSON.stringify(payload) }),
+  recordEmergencyIntervention: (id: string, payload: { type: string; notes: string; vitals?: string }) =>
+    apiRequest<EmergencyIncidentDetailDto>(`/api/v1/emergency/requests/${encodeURIComponent(id)}/interventions`, { method: 'POST', body: JSON.stringify(payload) }),
+  reassessEmergencyAcuity: (id: string, payload: { triage_level: string; reason: string; vital_signs?: string }) =>
+    apiRequest<EmergencyIncidentDetailDto>(`/api/v1/emergency/requests/${encodeURIComponent(id)}/reassess`, { method: 'PATCH', body: JSON.stringify(payload) }),
+  concludeEmergencyDisposition: (id: string, payload: { disposition: string; destination_ward?: string; notes?: string }) =>
+    apiRequest<EmergencyIncidentDetailDto>(`/api/v1/emergency/requests/${encodeURIComponent(id)}/disposition`, { method: 'POST', body: JSON.stringify(payload) }),
+  activePatientEmergency: () => apiRequest<EmergencyIncidentDetailDto | null>('/api/v1/emergency/patient/active'),
+  emergencyStats: () => apiRequest<EmergencySurgeStatsDto>('/api/v1/emergency/stats'),
 
   // Labs & System Design
   autocomplete: (q: string, limit = 10) => apiRequest<any>(`/api/v1/autocomplete?q=${encodeURIComponent(q)}&limit=${limit}`),
@@ -320,7 +450,76 @@ export const api = {
   rateLimitMetrics: () => apiRequest<any>('/api/v1/system-design/ratelimiter/metrics'),
   idBenchmark: (count: number) => apiRequest<any>('/api/v1/system-design/ids/benchmark', { method: 'POST', body: JSON.stringify({ sample_size: count }) }),
 
+
+  
   // Medora AI Assistant
-  aiStatus: () => apiRequest<AiStatusResponse>('/api/v1/ai/status'),
-  aiChat: (message: string) => apiRequest<AiChatResponse>('/api/v1/ai/chat', { method: 'POST', body: JSON.stringify({ message }) }),
+  aiStatus: () =>
+    apiRequest<AiStatusResponse>('/api/v1/ai/status'),
+
+  aiChat: (message: string) =>
+    apiRequest<AiChatResponse>('/api/v1/ai/chat', {
+      method: 'POST',
+      body: JSON.stringify({ message }),
+    }),
+
+  // Medical Knowledge & Consistent Hash Cache Routing
+  searchKnowledge: (q?: string, category?: string, specialty?: string) => {
+    const params = new URLSearchParams();
+
+    if (q) params.set('q', q);
+    if (category && category !== 'ALL') {
+      params.set('category', category);
+    }
+    if (specialty && specialty !== 'ALL') {
+      params.set('specialty', specialty);
+    }
+
+    const qs = params.toString();
+
+    return apiRequest<MedicalKnowledgeSearchResponse>(
+      `/api/v1/knowledge/search${qs ? `?${qs}` : ''}`,
+    );
+  },
+
+  knowledgeResource: (id: string) =>
+    apiRequest<ResourcePreviewDto>(
+      `/api/v1/knowledge/resources/${encodeURIComponent(id)}`,
+    ),
+
+  knowledgeSources: () =>
+    apiRequest<KnowledgeSourceDto[]>('/api/v1/knowledge/sources'),
+
+  addKnowledgeSource: (payload: {
+    domain: string;
+    name: string;
+    seed_url: string;
+  }) =>
+    apiRequest<KnowledgeSourceDto>('/api/v1/knowledge/sources', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  deleteKnowledgeSource: (id: string) =>
+    apiRequest<{
+      status: string;
+      source_id: string;
+      message: string;
+    }>(`/api/v1/knowledge/sources/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    }),
+
+  triggerKnowledgeCrawl: (payload: {
+    seed_urls?: string[];
+    max_depth?: number;
+    max_pages?: number;
+  }) =>
+    apiRequest<any>('/api/v1/knowledge/crawl', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  knowledgeCacheStats: () =>
+    apiRequest<{ hashring: any; crawler: any }>(
+      '/api/v1/knowledge/cache/stats',
+    ),
 };

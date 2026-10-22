@@ -103,4 +103,68 @@ public class SystemDesignDtos {
         @JsonProperty("consistent_hash_ring_nodes") int consistentHashRingNodes,
         @JsonProperty("consistent_hash_ring_vnodes") int consistentHashRingVnodes
     ) {}
+
+    public record ArticleSectionDto(
+        String heading,
+        String content,
+        @JsonProperty("bullet_points") List<String> bulletPoints
+    ) {}
+
+    public record ResourcePreviewDto(
+        String id,
+        String url,
+        String title,
+        String domain,
+        @JsonProperty("source_name") String sourceName,
+        String category,
+        String specialty,
+        @JsonProperty("published_date") String publishedDate,
+        @JsonProperty("indexed_at") Instant indexedAt,
+        @JsonProperty("content_snippet") String contentSnippet,
+        @JsonProperty("full_text") String fullText,
+        List<ArticleSectionDto> sections,
+        @JsonProperty("safe_outlinks") List<String> safeOutlinks,
+        String disclaimer
+    ) {}
+
+    public record MedicalKnowledgeItemDto(
+        String id,
+        String url,
+        String title,
+        String domain,
+        @JsonProperty("source_name") String sourceName,
+        String category,
+        String specialty,
+        @JsonProperty("content_snippet") String contentSnippet,
+        @JsonProperty("indexed_at") Instant indexedAt,
+        @JsonProperty("section_count") int sectionCount
+    ) {}
+
+    public record MedicalKnowledgeSearchResponse(
+        String query,
+        String category,
+        String specialty,
+        @JsonProperty("total_results") int totalResults,
+        List<MedicalKnowledgeItemDto> items,
+        @JsonProperty("routed_cache_node") String routedCacheNode,
+        @JsonProperty("cache_hit") boolean cacheHit,
+        @JsonProperty("cache_key") String cacheKey,
+        @JsonProperty("search_latency_ms") long searchLatencyMs
+    ) {}
+
+    public record KnowledgeSourceDto(
+        String id,
+        String domain,
+        String name,
+        @JsonProperty("seed_url") String seedUrl,
+        String status,
+        @JsonProperty("last_crawled_at") Instant lastCrawledAt,
+        @JsonProperty("documents_count") long documentsCount
+    ) {}
+
+    public record KnowledgeSourceCreateRequest(
+        @NotBlank @JsonProperty("domain") String domain,
+        @NotBlank @JsonProperty("name") String name,
+        @NotBlank @JsonProperty("seed_url") String seedUrl
+    ) {}
 }

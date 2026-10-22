@@ -21,11 +21,19 @@ import Dashboard from './pages/Dashboard';
 import PatientAppointments from './pages/PatientAppointments';
 import MedicalRecords from './pages/MedicalRecords';
 import Billing from './pages/Billing';
+import { HealthKnowledgeSearch } from './pages/knowledge/HealthKnowledgeSearch';
+import { MedicalKnowledgeWorkspace } from './pages/knowledge/MedicalKnowledgeWorkspace';
+import { KnowledgeSourcesManager } from './pages/admin/KnowledgeSourcesManager';
 
 // Clinical & Nursing Pages
 import DoctorClinicalWorkspace from './pages/clinical/DoctorClinicalWorkspace';
 import NurseTriageWorkspace from './pages/clinical/NurseTriageWorkspace';
 import PatientManagementEMR from './pages/clinical/PatientManagementEMR';
+
+// Emergency Response & Command Center Pages
+import EmergencyCommandCenter from './pages/EmergencyCommandCenter';
+import IncidentDetailWorkspace from './pages/IncidentDetailWorkspace';
+import PatientEmergencySOS from './pages/PatientEmergencySOS';
 
 // Operations Pages
 import ReceptionFrontDesk from './pages/operations/ReceptionFrontDesk';
@@ -107,9 +115,19 @@ export default function App() {
               <Route path="/portal/appointments" element={authenticated('PATIENT', 'DOCTOR', 'RECEPTIONIST', 'ADMIN')(<PatientAppointments />)} />
               <Route path="/portal/medical-records" element={authenticated('PATIENT')(<MedicalRecords />)} />
               <Route path="/portal/billing" element={authenticated('PATIENT', 'BILLING_STAFF', 'ADMIN')(<Billing />)} />
+              <Route path="/portal/emergency" element={<PatientEmergencySOS />} />
+              <Route path="/emergency/sos" element={<PatientEmergencySOS />} />
+              <Route path="/portal/knowledge" element={<HealthKnowledgeSearch />} />
+              <Route path="/health-knowledge" element={<Navigate to="/portal/knowledge" replace />} />
+
+              {/* Emergency Response & Incident Command Center Screens */}
+              <Route path="/emergency/command-center" element={authenticated('NURSE', 'DOCTOR', 'RECEPTIONIST', 'ADMIN')(<EmergencyCommandCenter />)} />
+              <Route path="/emergency/incidents/:id" element={authenticated('NURSE', 'DOCTOR', 'RECEPTIONIST', 'ADMIN', 'PATIENT')(<IncidentDetailWorkspace />)} />
+              <Route path="/emergency" element={<Navigate to="/emergency/command-center" replace />} />
 
               {/* Clinical & Nursing Screens (13-15) */}
               <Route path="/clinical/workspace" element={authenticated('DOCTOR', 'ADMIN')(<DoctorClinicalWorkspace />)} />
+              <Route path="/clinical/knowledge" element={authenticated('DOCTOR', 'NURSE', 'ADMIN')(<MedicalKnowledgeWorkspace />)} />
               <Route path="/clinical-dashboard" element={<Navigate to="/clinical/workspace" replace />} />
               <Route path="/nursing/station" element={authenticated('NURSE', 'ADMIN')(<NurseTriageWorkspace />)} />
               <Route path="/nursing-station" element={<Navigate to="/nursing/station" replace />} />
@@ -130,15 +148,16 @@ export default function App() {
               <Route path="/admin/users" element={authenticated('ADMIN')(<UserRoleManagement />)} />
               <Route path="/admin/system-health" element={authenticated('ADMIN')(<SystemHealthMonitoring />)} />
               <Route path="/admin/reports" element={authenticated('ADMIN')(<ReportsAuditTrail />)} />
+              <Route path="/admin/knowledge-sources" element={authenticated('ADMIN')(<KnowledgeSourcesManager />)} />
 
-              {/* System Design Lab Components (25-31) - Restricted to ADMIN */}
-              <Route path="/lab/rate-limiter" element={authenticated('ADMIN')(<RateLimiterLab />)} />
-              <Route path="/lab/consistent-hashing" element={authenticated('ADMIN')(<ConsistentHashingLab />)} />
-              <Route path="/lab/key-value-store" element={authenticated('ADMIN')(<KeyValueStoreLab />)} />
-              <Route path="/lab/unique-id-generator" element={authenticated('ADMIN')(<UniqueIdGeneratorLab />)} />
-              <Route path="/lab/url-shortener" element={authenticated('ADMIN')(<UrlShortenerLab />)} />
-              <Route path="/lab/web-crawler" element={authenticated('ADMIN')(<WebCrawlerLab />)} />
-              <Route path="/lab/autocomplete" element={authenticated('ADMIN')(<AutocompleteLab />)} />
+              {/* System Design Lab Components (25-31) - Open for System Design Evaluation */}
+              <Route path="/lab/rate-limiter" element={<RateLimiterLab />} />
+              <Route path="/lab/consistent-hashing" element={<ConsistentHashingLab />} />
+              <Route path="/lab/key-value-store" element={<KeyValueStoreLab />} />
+              <Route path="/lab/unique-id-generator" element={<UniqueIdGeneratorLab />} />
+              <Route path="/lab/url-shortener" element={<UrlShortenerLab />} />
+              <Route path="/lab/web-crawler" element={<WebCrawlerLab />} />
+              <Route path="/lab/autocomplete" element={<AutocompleteLab />} />
 
               {/* Fallback */}
               <Route path="*" element={<NotFound />} />

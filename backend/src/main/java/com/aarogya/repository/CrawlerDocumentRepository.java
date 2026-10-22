@@ -12,4 +12,7 @@ public interface CrawlerDocumentRepository extends MongoRepository<CrawlerDocume
     Optional<CrawlerDocument> findByUrl(String url);
     Optional<CrawlerDocument> findByContentHash(String contentHash);
     List<CrawlerDocument> findByTitleContainingIgnoreCaseOrContentSnippetContainingIgnoreCase(String title, String snippet);
+    long countByDomain(String domain);
+    List<CrawlerDocument> findByDomain(String domain);
+    void deleteByDomain(String domain);
 }

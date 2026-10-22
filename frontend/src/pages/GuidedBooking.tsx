@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Zap, HeartPulse, Brain, Bone, Activity, 
-  Baby, CheckCircle2, ArrowRight, Clock, ShieldCheck, AlertCircle 
+  Baby, CheckCircle2, ArrowRight, Clock, ShieldCheck, AlertCircle, Copy, Check
 } from 'lucide-react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -90,6 +90,8 @@ export default function GuidedBooking() {
   const [bookingError, setBookingError] = useState('');
   const [isCompleted, setIsCompleted] = useState(false);
   const [tokenRef, setTokenRef] = useState('');
+  const [shortUrl, setShortUrl] = useState('');
+  const [copiedLink, setCopiedLink] = useState(false);
   const [confirmedSlotTime, setConfirmedSlotTime] = useState('');
 
   // Fetch real doctors from backend
@@ -207,6 +209,7 @@ export default function GuidedBooking() {
         selectedDate
       );
       setTokenRef(res.appointment_number || res.id);
+      setShortUrl(res.short_url || '');
       setIsCompleted(true);
     } catch (err: any) {
       // If patient not authenticated or booking requires patient session, report or provide guidance
@@ -284,6 +287,36 @@ export default function GuidedBooking() {
               <span className="text-slate-400">Location:</span>
               <span className="font-semibold text-slate-900">OPD Suite {selectedDoctor?.opdRoom || '204'}, Medora Campus</span>
             </div>
+
+            {shortUrl && (
+              <div className="pt-3 border-t border-slate-200">
+                <div className="bg-teal-50/90 rounded-xl p-3 border border-teal-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                  <div className="overflow-hidden max-w-[260px]">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-teal-800 block">Digital Pass Short Link</span>
+                    <a
+                      href={shortUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-mono text-xs text-teal-900 font-bold hover:underline truncate block"
+                    >
+                      {shortUrl}
+                    </a>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(shortUrl);
+                      setCopiedLink(true);
+                      setTimeout(() => setCopiedLink(false), 3000);
+                    }}
+                    className="px-2.5 py-1 bg-white text-teal-800 hover:bg-teal-100 text-xs font-bold rounded-lg border border-teal-300 shadow-2xs transition flex items-center gap-1 shrink-0"
+                  >
+                    {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                    <span>{copiedLink ? 'Copied' : 'Copy'}</span>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="flex items-center justify-center gap-4">
@@ -366,6 +399,30 @@ export default function GuidedBooking() {
                 <p className="text-xs text-slate-500">
                   Select the primary category of symptoms you are facing:
                 </p>
+              </div>
+
+              {/* Emergency Advisory Warning */}
+              <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-3 text-rose-900">
+                  <div className="w-8 h-8 rounded-xl bg-rose-100 flex items-center justify-center text-rose-600 shrink-0">
+                    <AlertCircle className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <strong className="block font-bold text-rose-900">Acute Medical Emergency Notice</strong>
+                    <span className="text-slate-600">
+                      If you are experiencing acute crushing chest pain, sudden limb weakness/speech slurring, severe breathlessness, or major trauma, do <strong>NOT</strong> schedule an outpatient appointment.
+                    </span>
+                  </div>
+                </div>
+                <div className="shrink-0 flex items-center gap-2">
+                  <a
+                    href="tel:108"
+                    className="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold transition flex items-center gap-1.5 shadow-sm text-xs"
+                  >
+                    <Zap className="w-3.5 h-3.5" />
+                    <span>ER Line: 108</span>
+                  </a>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

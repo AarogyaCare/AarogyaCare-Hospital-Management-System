@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { 
   Calendar, Clock, User, CheckCircle2, ArrowRight, ArrowLeft, 
-  ShieldCheck, AlertCircle, Phone, Mail, MapPin, QrCode, Sparkles, Search
+  ShieldCheck, AlertCircle, Phone, Mail, MapPin, QrCode, Sparkles, Search,
+  Copy, Check, ExternalLink
 } from 'lucide-react';
 import { specialtiesData } from '../data/specialties';
 import { api, PatientDto } from '../services/api';
@@ -58,6 +59,8 @@ export default function BookAppointment() {
   const [symptoms, setSymptoms] = useState('');
   const [isConfirmed, setIsConfirmed] = useState(false);
   const [bookingRef, setBookingRef] = useState('');
+  const [shortUrl, setShortUrl] = useState('');
+  const [copiedLink, setCopiedLink] = useState(false);
   const [availableSlots, setAvailableSlots] = useState<any[]>([]);
   const [bookingError, setBookingError] = useState('');
   const [isBooking, setIsBooking] = useState(false);
@@ -164,13 +167,25 @@ export default function BookAppointment() {
 
   const doctor = doctorList.find((item) => item.id === selectedDoctorId) || doctorList[0];
   useEffect(() => {
-    if (!selectedDoctorId) {
+    if (!selectedDoctorId || !selectedDate) {
       setAvailableSlots([]);
       return;
     }
-    api.slots(selectedDoctorId).then((slots) => setAvailableSlots(slots.filter((s: any) => String(s.status).toUpperCase() === 'AVAILABLE')))
-      .catch(() => setAvailableSlots([]));
-  }, [selectedDoctorId]);
+    let active = true;
+    api.slots(selectedDoctorId, selectedDate)
+      .then((slots) => {
+        if (!active) return;
+        const available = slots.filter((s: any) => String(s.status).toUpperCase() === 'AVAILABLE');
+        setAvailableSlots(available);
+        if (selectedTime && !available.some((s: any) => formatSlotTime(s.slot_start) === formatSlotTime(selectedTime))) {
+          setSelectedTime('');
+        }
+      })
+      .catch(() => {
+        if (active) setAvailableSlots([]);
+      });
+    return () => { active = false; };
+  }, [selectedDoctorId, selectedDate]);
 
   const filteredDoctors = doctorList.filter((d) =>
     selectedSpecialty ? d.departmentName.includes(selectedSpecialty) || d.specializations.some((specialty) => specialty.includes(selectedSpecialty)) : true
@@ -196,7 +211,7 @@ export default function BookAppointment() {
       return formatSlotTime(slot.slot_start) === formatSlotTime(selectedTime);
     });
     if (!matching) {
-      setBookingError('No matching available backend slot was found. Select a time that is available in the backend.');
+      setBookingError('The selected time slot is unavailable for this date. Please pick another available slot.');
       return;
     }
     if (user?.role !== 'PATIENT' && !selectedPatientId) {
@@ -225,9 +240,22 @@ export default function BookAppointment() {
         user?.role !== 'PATIENT' ? selectedPatientId : undefined
       );
       setBookingRef(created.appointment_number || created.id);
+      setShortUrl(created.short_url || '');
       setIsConfirmed(true);
-    } catch (error) {
-      setBookingError(error instanceof Error ? error.message : 'Appointment booking failed.');
+    } catch (error: any) {
+      const status = error?.status;
+      const msg = error instanceof Error ? error.message : 'Appointment booking failed.';
+      if (status === 409 || msg.toLowerCase().includes('already booked')) {
+        setBookingError('This time slot has already been booked for the selected date. Please choose a different slot or date.');
+      } else if (msg.toLowerCase().includes('past') || msg.toLowerCase().includes('passed')) {
+        setBookingError(msg);
+      } else if (status === 400) {
+        setBookingError(msg);
+      } else if (status >= 500) {
+        setBookingError('The appointment booking service is temporarily unavailable. Please try again in a few moments.');
+      } else {
+        setBookingError(msg);
+      }
     } finally {
       setIsBooking(false);
     }
@@ -362,6 +390,36 @@ export default function BookAppointment() {
                 <span className="text-slate-400">Consultation Fee:</span>
                 <span className="font-bold text-[#002043]">{doctor.consultationFee > 0 ? `₹${doctor.consultationFee} (Pay at desk or online)` : 'Pay at desk or online'}</span>
               </div>
+
+              {shortUrl && (
+                <div className="pt-3 border-t border-slate-200">
+                  <div className="bg-teal-50/90 rounded-2xl p-3 border border-teal-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                    <div className="overflow-hidden max-w-[260px]">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-teal-800 block">Digital Pass Short Link</span>
+                      <a
+                        href={shortUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-mono text-xs text-teal-900 font-bold hover:underline truncate block"
+                      >
+                        {shortUrl}
+                      </a>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(shortUrl);
+                        setCopiedLink(true);
+                        setTimeout(() => setCopiedLink(false), 3000);
+                      }}
+                      className="px-2.5 py-1 bg-white text-teal-800 hover:bg-teal-100 text-xs font-bold rounded-lg border border-teal-300 shadow-2xs transition flex items-center gap-1 shrink-0"
+                    >
+                      {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span>{copiedLink ? 'Copied' : 'Copy'}</span>
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -376,6 +434,11 @@ export default function BookAppointment() {
               onClick={() => {
                 setIsConfirmed(false);
                 setCurrentStep(0);
+                setSelectedTime('');
+                setBookingError('');
+                setSymptoms('');
+                setShortUrl('');
+                setSelectedDate(localToday());
               }}
               className="px-6 py-3 border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-xl transition"
             >
@@ -480,8 +543,13 @@ export default function BookAppointment() {
                 <label className="text-xs font-semibold text-slate-700 block mb-2">Preferred Appointment Date</label>
                 <input
                   type="date"
+                  min={localToday()}
                   value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
+                  onChange={(e) => {
+                    setSelectedDate(e.target.value);
+                    setSelectedTime('');
+                    setBookingError('');
+                  }}
                   className="w-full max-w-sm px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800"
                 />
               </div>

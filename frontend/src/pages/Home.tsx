@@ -390,7 +390,7 @@ export default function Home() {
       {/* 3. SCALLOP QUICK-SERVICES STRIP (MEDANTA 7-CARD ARCHITECTURE)  */}
       {/* ============================================================== */}
       <section className="max-w-7xl mx-auto px-4 md:px-8 pt-2">
-        <div className={`grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 ${user?.role === 'ADMIN' ? 'xl:grid-cols-8' : 'xl:grid-cols-7'} gap-3 sm:gap-3.5`}>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8 gap-3 sm:gap-3.5">
           {[
             {
               title: 'Get Health Checkup',
@@ -448,7 +448,7 @@ export default function Home() {
               color: 'text-rose-700 bg-rose-50',
               bgImage: undefined, // Explicitly no photo background per user requirement!
             },
-          ].filter(item => item.title !== 'System Design Labs' || user?.role === 'ADMIN').map((item, idx) => {
+          ].map((item, idx) => {
             const Icon = item.icon;
             return (
               <Link

@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { 
   Globe, Play, RotateCcw, CheckCircle2, 
-  Layers, ArrowRight, ShieldCheck, Zap, Database, Search, AlertTriangle, ExternalLink
+  Layers, ArrowRight, ShieldCheck, Zap, Database, Search, AlertTriangle, ExternalLink, BookOpen
 } from 'lucide-react';
 import { api } from '../../services/api';
+import { ResourcePreviewModal } from '../../components/ResourcePreviewModal';
 
 export interface CrawlTask {
   id: string;
@@ -44,6 +46,7 @@ export default function WebCrawlerLab() {
   const [searchQuery, setSearchQuery] = useState('');
   const [indexedDocs, setIndexedDocs] = useState<IndexedDocument[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
 
   const showToast = (text: string, type: 'success' | 'error' | 'warning' = 'success') => {
     setToast({ text, type });
@@ -183,6 +186,27 @@ export default function WebCrawlerLab() {
           <Play className={`w-4 h-4 ${isCrawling ? 'animate-spin' : ''}`} />
           <span>{isCrawling ? 'Crawling Pipeline...' : 'Run Crawler on Frontier'}</span>
         </button>
+      </div>
+
+      {/* Production Workflow Integration Banner */}
+      <div className="p-4 rounded-2xl bg-slate-900 border border-cyan-800/50 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-300 shadow-md">
+        <div className="flex items-center gap-2.5">
+          <Globe className="w-4 h-4 text-cyan-400 shrink-0" />
+          <span>
+            <strong className="text-white font-semibold">Real-World Hospital Integration:</strong> This crawler is now deployed directly into patient and physician workflows with in-app structured previews and consistent hashing routing.
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <Link to="/portal/knowledge" className="px-3 py-1.5 bg-cyan-700 hover:bg-cyan-600 text-white font-semibold rounded-lg transition shadow-sm">
+            Patient Hub
+          </Link>
+          <Link to="/clinical/knowledge" className="px-3 py-1.5 bg-indigo-700 hover:bg-indigo-600 text-white font-semibold rounded-lg transition shadow-sm">
+            Doctor Workspace
+          </Link>
+          <Link to="/admin/knowledge-sources" className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold rounded-lg transition shadow-sm">
+            Manage Sources
+          </Link>
+        </div>
       </div>
 
       {toast && (
@@ -373,6 +397,15 @@ export default function WebCrawlerLab() {
                         </a>
                       </div>
                     </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setSelectedDocId(doc.id)}
+                      className="px-2.5 py-1 text-[11px] font-semibold bg-[#002043] hover:bg-[#17365d] text-white rounded-lg transition shrink-0 flex items-center gap-1 shadow-sm"
+                    >
+                      <BookOpen className="w-3 h-3" />
+                      <span>In-App Reader</span>
+                    </button>
                   </div>
 
                   {doc.content_snippet && (
@@ -386,6 +419,12 @@ export default function WebCrawlerLab() {
           </div>
         </div>
       </div>
+
+      {/* In-App Structured Reader Modal */}
+      <ResourcePreviewModal
+        resourceId={selectedDocId}
+        onClose={() => setSelectedDocId(null)}
+      />
     </div>
   );
 }

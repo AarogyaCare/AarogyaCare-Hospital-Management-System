@@ -26,7 +26,7 @@ public class EmergencyController {
     }
 
     @GetMapping("/requests")
-    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('NURSE', 'DOCTOR', 'ADMIN')")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('NURSE', 'DOCTOR', 'ADMIN', 'RECEPTIONIST')")
     public ResponseEntity<List<EmergencyDtos.EmergencyResponse>> getEmergencyQueue(
             @RequestParam(required = false) String status) {
         return ResponseEntity.ok(emergencyService.getEmergencyQueue(status));
@@ -52,5 +52,66 @@ public class EmergencyController {
             @Valid @RequestBody EmergencyDtos.EmergencyStatusUpdateRequest request,
             @AuthenticationPrincipal UserPrincipal principal) {
         return ResponseEntity.ok(emergencyService.updateStatus(id, request.status(), principal));
+    }
+
+    @GetMapping("/requests/{id}")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('NURSE', 'DOCTOR', 'ADMIN', 'RECEPTIONIST', 'PATIENT')")
+    public ResponseEntity<EmergencyDtos.EmergencyDetailResponse> getEmergencyDetail(
+            @PathVariable String id,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseEntity.ok(emergencyService.getEmergencyDetail(id, principal));
+    }
+
+    @PatchMapping("/requests/{id}/assign")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('NURSE', 'DOCTOR', 'ADMIN', 'RECEPTIONIST')")
+    public ResponseEntity<EmergencyDtos.EmergencyDetailResponse> assignCareTeamAndBay(
+            @PathVariable String id,
+            @Valid @RequestBody EmergencyDtos.IncidentAssignRequest request,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseEntity.ok(emergencyService.assignCareTeamAndBay(id, request, principal));
+    }
+
+    @PostMapping("/requests/{id}/interventions")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('NURSE', 'DOCTOR')")
+    public ResponseEntity<EmergencyDtos.EmergencyDetailResponse> recordIntervention(
+            @PathVariable String id,
+            @Valid @RequestBody EmergencyDtos.InterventionRequest request,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseEntity.ok(emergencyService.recordIntervention(id, request, principal));
+    }
+
+    @PatchMapping("/requests/{id}/reassess")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('NURSE', 'DOCTOR')")
+    public ResponseEntity<EmergencyDtos.EmergencyDetailResponse> reassessAcuity(
+            @PathVariable String id,
+            @Valid @RequestBody EmergencyDtos.ReassessRequest request,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseEntity.ok(emergencyService.reassessAcuity(id, request, principal));
+    }
+
+    @PostMapping("/requests/{id}/disposition")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('DOCTOR', 'ADMIN')")
+    public ResponseEntity<EmergencyDtos.EmergencyDetailResponse> concludeDisposition(
+            @PathVariable String id,
+            @Valid @RequestBody EmergencyDtos.DispositionRequest request,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseEntity.ok(emergencyService.concludeDisposition(id, request, principal));
+    }
+
+    @GetMapping("/patient/active")
+    @org.springframework.security.access.prepost.PreAuthorize("hasRole('PATIENT')")
+    public ResponseEntity<EmergencyDtos.EmergencyDetailResponse> getActivePatientEmergency(
+            @AuthenticationPrincipal UserPrincipal principal) {
+        EmergencyDtos.EmergencyDetailResponse res = emergencyService.getActivePatientEmergency(principal.getId());
+        if (res == null) {
+            return ResponseEntity.noContent().build();
+        }
+        return ResponseEntity.ok(res);
+    }
+
+    @GetMapping("/stats")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('NURSE', 'DOCTOR', 'ADMIN', 'RECEPTIONIST')")
+    public ResponseEntity<EmergencyDtos.EmergencySurgeStatsResponse> getEmergencySurgeStats() {
+        return ResponseEntity.ok(emergencyService.getEmergencySurgeStats());
     }
 }

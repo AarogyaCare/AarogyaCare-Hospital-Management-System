@@ -10,4 +10,6 @@ import java.util.List;
 public interface EmergencyRequestRepository extends MongoRepository<EmergencyRequestDocument, String> {
     List<EmergencyRequestDocument> findByStatus(String status);
     List<EmergencyRequestDocument> findAllByOrderByPriorityScoreAscCreatedAtDesc();
+    List<EmergencyRequestDocument> findByPatientIdOrderByCreatedAtDesc(String patientId);
+    java.util.Optional<EmergencyRequestDocument> findByIncidentNumber(String incidentNumber);
 }

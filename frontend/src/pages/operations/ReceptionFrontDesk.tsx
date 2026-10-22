@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Building2, Users, Printer, PhoneCall, AlertTriangle,
   CheckCircle2, Clock, MapPin, Search, ArrowRight, ShieldAlert, Plus, RefreshCw, AlertCircle
@@ -182,7 +183,7 @@ export default function ReceptionFrontDesk() {
   const triggerEmergencyAlert = async () => {
     setEmergencyAlert(true);
     try {
-      await api.createEmergency({
+      const res = await api.createEmergency({
         caller_name: 'Reception Front Desk',
         contact_phone: '+91 44 2829 0000',
         emergency_type: 'TRAUMA_CODE_RED',
@@ -190,9 +191,9 @@ export default function ReceptionFrontDesk() {
         severity_level: 'CRITICAL',
         notes: 'Inbound code red trauma alert triggered by front desk receptionist.'
       });
-      showToast('RED CODE DISPATCHED: Trauma bay, crash cart, and on-call team alerted.');
-    } catch {
-      showToast('Local trauma notification broadcast to emergency wing.');
+      showToast(`RED CODE DISPATCHED (#${res?.id ? res.id.slice(0, 8) : 'ACTIVE'}): Trauma bay, crash cart, and on-call team alerted.`);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Emergency alert broadcast failed. Call ER extension 108 immediately.', 'error');
     }
     setTimeout(() => setEmergencyAlert(false), 5000);
   };
@@ -219,6 +220,13 @@ export default function ReceptionFrontDesk() {
         </div>
 
         <div className="flex items-center gap-3">
+          <Link
+            to="/emergency/command-center"
+            className="p-2.5 bg-rose-600/80 hover:bg-rose-600 text-white rounded-xl transition flex items-center gap-1.5 text-xs font-bold shadow-md"
+          >
+            <ShieldAlert className="w-3.5 h-3.5" />
+            <span>Command Center</span>
+          </Link>
           <button
             onClick={loadInitialData}
             disabled={isLoading}

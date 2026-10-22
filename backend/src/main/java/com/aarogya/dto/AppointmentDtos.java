@@ -54,8 +54,35 @@ public class AppointmentDtos {
         @JsonProperty("vital_signs") String vitalSigns,
         @JsonProperty("triage_notes") String triageNotes,
         @JsonProperty("triaged_by") String triagedBy,
-        @JsonProperty("triaged_at") Instant triagedAt
-    ) {}
+        @JsonProperty("triaged_at") Instant triagedAt,
+        @JsonProperty("short_url") String shortUrl
+    ) {
+        public AppointmentResponse(
+            String id,
+            String appointmentNumber,
+            String patientId,
+            String patientName,
+            String doctorId,
+            String doctorName,
+            String departmentName,
+            String slotId,
+            String slotStart,
+            String slotEnd,
+            String status,
+            String reasonForVisit,
+            String consultationMode,
+            String queueToken,
+            Instant createdAt,
+            String appointmentDate,
+            String triageLevel,
+            String vitalSigns,
+            String triageNotes,
+            String triagedBy,
+            Instant triagedAt
+        ) {
+            this(id, appointmentNumber, patientId, patientName, doctorId, doctorName, departmentName, slotId, slotStart, slotEnd, status, reasonForVisit, consultationMode, queueToken, createdAt, appointmentDate, triageLevel, vitalSigns, triageNotes, triagedBy, triagedAt, null);
+        }
+    }
 
     public record RecordTriageRequest(
         @JsonProperty("triage_level") String triageLevel,

@@ -193,6 +193,63 @@ public class SystemDesignController {
     }
 
     // -------------------------------------------------------------------------
+    // 3b. Medical Knowledge & Resource Preview (Consistent Hashing Routed)
+    // -------------------------------------------------------------------------
+    @GetMapping("/api/v1/knowledge/search")
+    public ResponseEntity<SystemDesignDtos.MedicalKnowledgeSearchResponse> searchMedicalKnowledge(
+            @RequestParam(required = false, name = "q") String query,
+            @RequestParam(required = false, name = "category") String category,
+            @RequestParam(required = false, name = "specialty") String specialty) {
+        return ResponseEntity.ok(crawlerService.searchMedicalKnowledge(query, category, specialty));
+    }
+
+    @GetMapping("/api/v1/knowledge/resources/{id}")
+    public ResponseEntity<SystemDesignDtos.ResourcePreviewDto> getResourcePreview(@PathVariable String id) {
+        return ResponseEntity.ok(crawlerService.getResourcePreview(id));
+    }
+
+    @GetMapping("/api/v1/knowledge/sources")
+    public ResponseEntity<List<SystemDesignDtos.KnowledgeSourceDto>> getKnowledgeSources() {
+        return ResponseEntity.ok(crawlerService.getApprovedSources());
+    }
+
+    @PostMapping("/api/v1/knowledge/sources")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
+    public ResponseEntity<SystemDesignDtos.KnowledgeSourceDto> addKnowledgeSource(
+            @Valid @RequestBody SystemDesignDtos.KnowledgeSourceCreateRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(crawlerService.addApprovedSource(request));
+    }
+
+    @DeleteMapping("/api/v1/knowledge/sources/{id}")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
+    public ResponseEntity<Map<String, Object>> deleteKnowledgeSource(@PathVariable String id) {
+        crawlerService.deleteApprovedSource(id);
+        return ResponseEntity.ok(Map.of(
+                "status", "DELETED",
+                "source_id", id,
+                "message", "Knowledge source and associated documents successfully removed."
+        ));
+    }
+
+    @PostMapping("/api/v1/knowledge/crawl")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN', 'DOCTOR')")
+    public ResponseEntity<Map<String, Object>> triggerKnowledgeCrawl(
+            @RequestBody(required = false) SystemDesignDtos.CrawlerJobRequest request) {
+        List<String> seeds = request != null ? request.seedUrls() : Collections.emptyList();
+        int depth = request != null && request.maxDepth() != null ? request.maxDepth() : 2;
+        int pages = request != null && request.maxPages() != null ? request.maxPages() : 10;
+        return ResponseEntity.ok(crawlerService.runCrawlJob(seeds, depth, pages));
+    }
+
+    @GetMapping("/api/v1/knowledge/cache/stats")
+    public ResponseEntity<Map<String, Object>> getKnowledgeCacheStats() {
+        Map<String, Object> stats = new HashMap<>();
+        stats.put("hashring", hashRingRouter.getDistributionStats());
+        stats.put("crawler", crawlerService.getCrawlerStats());
+        return ResponseEntity.ok(stats);
+    }
+
+    // -------------------------------------------------------------------------
     // 4. Consistent Hash Ring
     // -------------------------------------------------------------------------
     @GetMapping("/api/v1/system-design/hashring/nodes")

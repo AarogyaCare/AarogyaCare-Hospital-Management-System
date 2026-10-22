@@ -246,23 +246,41 @@ public class DatabaseSeedService {
     }
 
     private void seedSlotsForDoctor(String doctorId, String roomNumber) {
-        String[] slotTimes = {
+        String[] slotStarts = {
             "09:00 AM", "09:30 AM", "10:00 AM", "10:30 AM", "11:00 AM",
             "11:30 AM", "02:00 PM", "02:30 PM", "03:00 PM", "03:30 PM", "04:00 PM"
         };
+        String[] slotEnds = {
+            "09:30 AM", "10:00 AM", "10:30 AM", "11:00 AM", "11:30 AM",
+            "12:00 PM", "02:30 PM", "03:00 PM", "03:30 PM", "04:00 PM", "04:30 PM"
+        };
 
-        for (int i = 0; i < slotTimes.length; i++) {
+        for (int i = 0; i < slotStarts.length; i++) {
             String slotId = "slot-" + doctorId + "-" + (i + 1);
-            if (slotRepository.findById(slotId).isEmpty()) {
-                DoctorSlotDocument slot = new DoctorSlotDocument(
+            DoctorSlotDocument slot = slotRepository.findById(slotId).orElse(null);
+            if (slot == null) {
+                slot = new DoctorSlotDocument(
                     slotId,
                     doctorId,
-                    slotTimes[i],
-                    slotTimes[i].replace("00", "30").replace("30", "00"),
+                    slotStarts[i],
+                    slotEnds[i],
                     "AVAILABLE",
                     roomNumber
                 );
                 slotRepository.save(slot);
+            } else {
+                boolean changed = false;
+                if (!"AVAILABLE".equalsIgnoreCase(slot.getStatus()) && !"BLOCKED".equalsIgnoreCase(slot.getStatus())) {
+                    slot.setStatus("AVAILABLE");
+                    changed = true;
+                }
+                if (!slotEnds[i].equals(slot.getSlotEnd())) {
+                    slot.setSlotEnd(slotEnds[i]);
+                    changed = true;
+                }
+                if (changed) {
+                    slotRepository.save(slot);
+                }
             }
         }
     }
@@ -282,11 +300,11 @@ public class DatabaseSeedService {
     }
 
     private void seedInitialAppointmentsAndRecords() {
-        // Book slot 1 for doc-1
         String slotId = "slot-doc-1-1";
+        // Ensure slot template remains AVAILABLE; appointment collection tracks booking.
         DoctorSlotDocument slot = slotRepository.findById(slotId).orElse(null);
-        if (slot != null && !"BOOKED".equals(slot.getStatus())) {
-            slot.setStatus("BOOKED");
+        if (slot != null && !"AVAILABLE".equals(slot.getStatus()) && !"BLOCKED".equals(slot.getStatus())) {
+            slot.setStatus("AVAILABLE");
             slotRepository.save(slot);
         }
 

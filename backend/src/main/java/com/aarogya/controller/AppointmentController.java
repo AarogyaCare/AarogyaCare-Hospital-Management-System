@@ -61,7 +61,7 @@ public class AppointmentController {
             @PathVariable String id,
             @Valid @RequestBody AppointmentDtos.RescheduleAppointmentRequest request,
             @AuthenticationPrincipal UserPrincipal principal) {
-        return ResponseEntity.ok(appointmentService.rescheduleAppointment(id, request.newSlotId(), principal));
+        return ResponseEntity.ok(appointmentService.rescheduleAppointment(id, request.newSlotId(), request.newAppointmentDate(), principal));
     }
 
     @PatchMapping("/{id}/status")

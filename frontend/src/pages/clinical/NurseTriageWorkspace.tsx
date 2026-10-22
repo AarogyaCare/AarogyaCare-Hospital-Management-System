@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import {
-  HeartPulse, Activity, AlertTriangle, ShieldCheck,
+  HeartPulse, Activity, AlertTriangle, ShieldCheck, ShieldAlert,
   CheckCircle2, Clock, User, Bed, Thermometer, RefreshCw, AlertCircle, Save,
   Search, FlaskConical, Check, ChevronRight
 } from 'lucide-react';
@@ -28,6 +29,7 @@ export default function NurseTriageWorkspace() {
   const [selectedAppointment, setSelectedAppointment] = useState<AppointmentDto | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isEscalating, setIsEscalating] = useState(false);
   const [toast, setToast] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
   // Search & Filters
@@ -161,6 +163,31 @@ export default function NurseTriageWorkspace() {
     }
   };
 
+  const handleEscalateToEmergency = async () => {
+    if (!selectedAppointment) return;
+    setIsEscalating(true);
+    try {
+      const vitalsString = `BP: ${bpSystolic}/${bpDiastolic} mmHg, HR: ${heartRate} bpm, SpO2: ${spo2}%, Temp: ${temperature}°F, RR: ${respiratoryRate}/min`;
+      const res = await api.createEmergency({
+        patient_name: selectedAppointment.patient_name || 'Walk-in OPD Patient',
+        patient_id: selectedAppointment.patient_id,
+        contact_number: (selectedAppointment as any).patient_phone || '+91 44 2829 0000',
+        triage_level: 'RED',
+        chief_complaint: `OPD Triage ESI-1 Escalation: ${selectedAppointment.reason_for_visit || triageNotes || 'Immediate resuscitation flagged'}`,
+        vital_signs: vitalsString,
+        caller_name: user?.name || 'Triage Station Nurse',
+        location: 'Nurse Station Tower B',
+        emergency_type: 'ACUTE_RESUSCITATION_ESI1',
+        notes: triageNotes || 'Patient flagged in acute distress at nursing station'
+      });
+      showToast(`EMERGENCY ESCALATION SENT (#${res?.id ? res.id.slice(0, 8) : 'RED'}): Emergency Bay and Crash Team Dispatched.`);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Escalation alert failed.', 'error');
+    } finally {
+      setIsEscalating(false);
+    }
+  };
+
   const handleCollectSample = async (orderId: string, testName: string) => {
     setCollectingLabId(orderId);
     try {
@@ -232,6 +259,13 @@ export default function NurseTriageWorkspace() {
         </div>
 
         <div className="flex items-center gap-3">
+          <Link
+            to="/emergency/command-center"
+            className="p-2.5 bg-rose-600/80 hover:bg-rose-600 text-white rounded-xl transition flex items-center gap-1.5 text-xs font-bold shadow-md"
+          >
+            <ShieldAlert className="w-3.5 h-3.5" />
+            <span>Command Center</span>
+          </Link>
           <button
             onClick={loadAppointments}
             disabled={isLoading}
@@ -423,6 +457,26 @@ export default function NurseTriageWorkspace() {
                     </button>
                   ))}
                 </div>
+                {triageLevel === 'ESI-1' && (
+                  <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs mt-2 animate-pulse">
+                    <div className="flex items-center gap-2 text-rose-800">
+                      <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0" />
+                      <div>
+                        <strong className="block font-bold">ESI-1 Resuscitation Acuity Detected</strong>
+                        <span className="text-[11px] text-rose-600">Patient presents with potential immediate life threat. Do not delay for standard OPD consultation.</span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleEscalateToEmergency}
+                      disabled={isEscalating}
+                      className="px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold shadow-md transition text-xs shrink-0 flex items-center gap-1.5 self-start sm:self-auto"
+                    >
+                      <Activity className="w-3.5 h-3.5 text-rose-200" />
+                      <span>{isEscalating ? 'Dispatching...' : 'Dispatch Code Red to ER Bay'}</span>
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Vital Signs Grid */}

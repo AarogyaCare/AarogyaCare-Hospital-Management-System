@@ -168,6 +168,8 @@ public class AppointmentToPharmacyWorkflowTests {
         assertEquals("CONFIRMED", bookedApt.status());
         assertEquals(bookingDate, bookedApt.appointmentDate(), "Appointment date must match booked date.");
         assertNotNull(bookedApt.queueToken());
+        assertNotNull(bookedApt.shortUrl(), "Appointment booking must automatically generate a short URL pass.");
+        assertTrue(bookedApt.shortUrl().contains("/s/"), "Short URL must follow http://localhost:8000/s/{code} pattern.");
 
         // Verify duplicate booking prevention on the same slot
         assertThrows(Exceptions.ConflictException.class, () -> {

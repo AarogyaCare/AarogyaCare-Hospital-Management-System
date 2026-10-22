@@ -50,6 +50,97 @@ public class EmergencyRequestDocument {
         this.updatedAt = Instant.now();
     }
 
+    private String location;
+    private String callerName;
+    private String emergencyType;
+    private String notes;
+
+    @Indexed
+    private String incidentNumber;
+
+    private boolean isProvisional = false;
+
+    private String assignedDoctorId;
+    private String assignedDoctorName;
+    private String assignedNurseId;
+    private String assignedNurseName;
+    private String assignedBay;
+
+    private String disposition; // "ADMITTED", "TRANSFERRED", "DISCHARGED", "DECEASED"
+    private String dispositionNotes;
+    private String destinationWard;
+    private Instant closedAt;
+    private String closedBy;
+
+    private java.util.List<IncidentTimelineEvent> timeline = new java.util.ArrayList<>();
+    private java.util.List<IncidentIntervention> interventions = new java.util.ArrayList<>();
+
+    public static class IncidentTimelineEvent {
+        private Instant timestamp = Instant.now();
+        private String author;
+        private String role;
+        private String eventType;
+        private String description;
+
+        public IncidentTimelineEvent() {}
+
+        public IncidentTimelineEvent(Instant timestamp, String author, String role, String eventType, String description) {
+            this.timestamp = timestamp != null ? timestamp : Instant.now();
+            this.author = author;
+            this.role = role;
+            this.eventType = eventType;
+            this.description = description;
+        }
+
+        public Instant getTimestamp() { return timestamp; }
+        public void setTimestamp(Instant timestamp) { this.timestamp = timestamp; }
+        public String getAuthor() { return author; }
+        public void setAuthor(String author) { this.author = author; }
+        public String getRole() { return role; }
+        public void setRole(String role) { this.role = role; }
+        public String getEventType() { return eventType; }
+        public void setEventType(String eventType) { this.eventType = eventType; }
+        public String getDescription() { return description; }
+        public void setDescription(String description) { this.description = description; }
+    }
+
+    public static class IncidentIntervention {
+        private String id;
+        private Instant timestamp = Instant.now();
+        private String author;
+        private String role;
+        private String type; // e.g. "IV_FLUIDS", "MEDICATION", "CPR", "INTUBATION", "WOUND_CARE", "OXYGEN"
+        private String notes;
+        private String vitalsRecorded;
+
+        public IncidentIntervention() {}
+
+        public IncidentIntervention(String id, Instant timestamp, String author, String role, String type, String notes, String vitalsRecorded) {
+            this.id = id;
+            this.timestamp = timestamp != null ? timestamp : Instant.now();
+            this.author = author;
+            this.role = role;
+            this.type = type;
+            this.notes = notes;
+            this.vitalsRecorded = vitalsRecorded;
+        }
+
+        public String getId() { return id; }
+        public void setId(String id) { this.id = id; }
+        public Instant getTimestamp() { return timestamp; }
+        public void setTimestamp(Instant timestamp) { this.timestamp = timestamp; }
+        public String getAuthor() { return author; }
+        public void setAuthor(String author) { this.author = author; }
+        public String getRole() { return role; }
+        public void setRole(String role) { this.role = role; }
+        public String getType() { return type; }
+        public void setType(String type) { this.type = type; }
+        public String getNotes() { return notes; }
+        public void setNotes(String notes) { this.notes = notes; }
+        public String getVitalsRecorded() { return vitalsRecorded; }
+        public void setVitalsRecorded(String vitalsRecorded) { this.vitalsRecorded = vitalsRecorded; }
+    }
+
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
 
@@ -85,4 +176,58 @@ public class EmergencyRequestDocument {
 
     public Instant getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(Instant updatedAt) { this.updatedAt = updatedAt; }
+
+    public String getLocation() { return location; }
+    public void setLocation(String location) { this.location = location; }
+
+    public String getCallerName() { return callerName; }
+    public void setCallerName(String callerName) { this.callerName = callerName; }
+
+    public String getEmergencyType() { return emergencyType; }
+    public void setEmergencyType(String emergencyType) { this.emergencyType = emergencyType; }
+
+    public String getNotes() { return notes; }
+    public void setNotes(String notes) { this.notes = notes; }
+
+    public String getIncidentNumber() { return incidentNumber; }
+    public void setIncidentNumber(String incidentNumber) { this.incidentNumber = incidentNumber; }
+
+    public boolean isProvisional() { return isProvisional; }
+    public void setProvisional(boolean provisional) { isProvisional = provisional; }
+
+    public String getAssignedDoctorId() { return assignedDoctorId; }
+    public void setAssignedDoctorId(String assignedDoctorId) { this.assignedDoctorId = assignedDoctorId; }
+
+    public String getAssignedDoctorName() { return assignedDoctorName; }
+    public void setAssignedDoctorName(String assignedDoctorName) { this.assignedDoctorName = assignedDoctorName; }
+
+    public String getAssignedNurseId() { return assignedNurseId; }
+    public void setAssignedNurseId(String assignedNurseId) { this.assignedNurseId = assignedNurseId; }
+
+    public String getAssignedNurseName() { return assignedNurseName; }
+    public void setAssignedNurseName(String assignedNurseName) { this.assignedNurseName = assignedNurseName; }
+
+    public String getAssignedBay() { return assignedBay; }
+    public void setAssignedBay(String assignedBay) { this.assignedBay = assignedBay; }
+
+    public String getDisposition() { return disposition; }
+    public void setDisposition(String disposition) { this.disposition = disposition; }
+
+    public String getDispositionNotes() { return dispositionNotes; }
+    public void setDispositionNotes(String dispositionNotes) { this.dispositionNotes = dispositionNotes; }
+
+    public String getDestinationWard() { return destinationWard; }
+    public void setDestinationWard(String destinationWard) { this.destinationWard = destinationWard; }
+
+    public Instant getClosedAt() { return closedAt; }
+    public void setClosedAt(Instant closedAt) { this.closedAt = closedAt; }
+
+    public String getClosedBy() { return closedBy; }
+    public void setClosedBy(String closedBy) { this.closedBy = closedBy; }
+
+    public java.util.List<IncidentTimelineEvent> getTimeline() { return timeline; }
+    public void setTimeline(java.util.List<IncidentTimelineEvent> timeline) { this.timeline = timeline; }
+
+    public java.util.List<IncidentIntervention> getInterventions() { return interventions; }
+    public void setInterventions(java.util.List<IncidentIntervention> interventions) { this.interventions = interventions; }
 }

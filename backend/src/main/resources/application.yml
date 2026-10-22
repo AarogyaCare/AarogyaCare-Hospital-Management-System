@@ -16,6 +16,7 @@ spring:
       timeout: 2000ms
 
 aarogya:
+  timezone: ${AAROGYA_TIMEZONE:Asia/Kolkata}
   security:
     jwt-secret: ${AAROGYA_SECURITY_JWT_SECRET:${JWT_SECRET:aarogya-care-jwt-secret-key-at-least-256-bits-long-for-local-dev-and-testing!}}
     jwt-expiration-ms: ${AAROGYA_SECURITY_JWT_EXPIRATION_MS:86400000} # 24 hours
