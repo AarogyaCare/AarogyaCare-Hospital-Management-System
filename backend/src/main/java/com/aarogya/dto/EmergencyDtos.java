@@ -4,12 +4,15 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotBlank;
 
 import java.time.Instant;
+import java.util.List;
 
 public class EmergencyDtos {
 
     public record EmergencyCreateRequest(
         @JsonProperty("patient_name") String patientName,
         @JsonProperty("patient_id") String patientId,
+        @JsonProperty("doctor_id") String doctorId,
+        @JsonProperty("doctor_name") String doctorName,
         @JsonProperty("contact_number") String contactNumber,
         @JsonProperty("contact_phone") String contactPhone,
         @JsonProperty("triage_level") String triageLevel, // "RED", "YELLOW", "GREEN"
@@ -28,18 +31,39 @@ public class EmergencyDtos {
                 String triageLevel,
                 String chiefComplaint,
                 String vitalSigns) {
-            this(patientName, patientId, contactNumber, null, triageLevel, null, chiefComplaint, vitalSigns, null, null, null, null);
+            this(patientName, patientId, null, null, contactNumber, null, triageLevel, null, chiefComplaint, vitalSigns, null, null, null, null);
+        }
+
+        public EmergencyCreateRequest(
+                String patientName,
+                String patientId,
+                String contactNumber,
+                String contactPhone,
+                String triageLevel,
+                String severityLevel,
+                String chiefComplaint,
+                String vitalSigns,
+                String callerName,
+                String location,
+                String emergencyType,
+                String notes) {
+            this(patientName, patientId, null, null, contactNumber, contactPhone, triageLevel, severityLevel, chiefComplaint, vitalSigns, callerName, location, emergencyType, notes);
         }
     }
 
     public record EmergencyStatusUpdateRequest(
-        @NotBlank String status
+        @NotBlank String status,
+        @JsonProperty("doctor_id") String doctorId,
+        @JsonProperty("doctor_notes") String doctorNotes
     ) {}
 
     public record EmergencyResponse(
         String id,
         @JsonProperty("patient_name") String patientName,
         @JsonProperty("patient_id") String patientId,
+        @JsonProperty("doctor_id") String doctorId,
+        @JsonProperty("doctor_name") String doctorName,
+        @JsonProperty("appointment_id") String appointmentId,
         @JsonProperty("contact_number") String contactNumber,
         @JsonProperty("triage_level") String triageLevel,
         @JsonProperty("chief_complaint") String chiefComplaint,
@@ -73,7 +97,7 @@ public class EmergencyDtos {
                 String callerName,
                 String emergencyType,
                 String notes) {
-            this(id, patientName, patientId, contactNumber, triageLevel, chiefComplaint, vitalSigns, status, priorityScore, createdAt, location, callerName, emergencyType, notes, null, false, null, null, null, null);
+            this(id, patientName, patientId, null, null, null, contactNumber, triageLevel, chiefComplaint, vitalSigns, status, priorityScore, createdAt, location, callerName, emergencyType, notes, null, false, null, null, null, null);
         }
 
         public EmergencyResponse(
@@ -87,7 +111,25 @@ public class EmergencyDtos {
                 String status,
                 int priorityScore,
                 Instant createdAt) {
-            this(id, patientName, patientId, contactNumber, triageLevel, chiefComplaint, vitalSigns, status, priorityScore, createdAt, null, null, null, null, null, false, null, null, null, null);
+            this(id, patientName, patientId, null, null, null, contactNumber, triageLevel, chiefComplaint, vitalSigns, status, priorityScore, createdAt, null, null, null, null, null, false, null, null, null, null);
+        }
+
+        public EmergencyResponse(
+                String id,
+                String patientName,
+                String patientId,
+                String doctorId,
+                String doctorName,
+                String appointmentId,
+                String contactNumber,
+                String triageLevel,
+                String chiefComplaint,
+                String vitalSigns,
+                String status,
+                int priorityScore,
+                String notes,
+                Instant createdAt) {
+            this(id, patientName, patientId, doctorId, doctorName, appointmentId, contactNumber, triageLevel, chiefComplaint, vitalSigns, status, priorityScore, createdAt, null, null, null, notes, null, false, doctorName, null, null, null);
         }
     }
 
@@ -163,8 +205,8 @@ public class EmergencyDtos {
         @JsonProperty("destination_ward") String destinationWard,
         @JsonProperty("closed_at") Instant closedAt,
         @JsonProperty("closed_by") String closedBy,
-        @JsonProperty("timeline") java.util.List<TimelineEventDto> timeline,
-        @JsonProperty("interventions") java.util.List<InterventionDto> interventions
+        @JsonProperty("timeline") List<TimelineEventDto> timeline,
+        @JsonProperty("interventions") List<InterventionDto> interventions
     ) {}
 
     public record EmergencySurgeStatsResponse(
@@ -174,5 +216,14 @@ public class EmergencyDtos {
         @JsonProperty("awaiting_triage_count") long awaitingTriageCount,
         @JsonProperty("stabilizing_count") long stabilizingCount,
         @JsonProperty("allocated_bays_count") long allocatedBaysCount
+    ) {}
+
+    public record OnCallDoctorResponse(
+        @JsonProperty("doctor_id") String doctorId,
+        @JsonProperty("doctor_name") String doctorName,
+        String department,
+        String qualification,
+        String status,
+        @JsonProperty("updated_at") Instant updatedAt
     ) {}
 }

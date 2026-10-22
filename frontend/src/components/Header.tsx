@@ -27,6 +27,7 @@ const roleModules: Record<UserRole, { name: string; path: string }[]> = {
   ],
   DOCTOR: [
     { name: 'Clinical', path: '/clinical/workspace' },
+    { name: 'Emergency Desk', path: '/operations/emergency' },
     { name: 'Emergency Center', path: '/emergency/command-center' },
     { name: 'Medical Knowledge', path: '/clinical/knowledge' },
     { name: 'Patient Records', path: '/emr/patients' },
@@ -40,6 +41,7 @@ const roleModules: Record<UserRole, { name: string; path: string }[]> = {
   ],
   RECEPTIONIST: [
     { name: 'Reception', path: '/reception' },
+    { name: 'Emergency Desk', path: '/operations/emergency' },
     { name: 'Emergency Center', path: '/emergency/command-center' },
     { name: 'Operations', path: '/operations/hub' },
     { name: 'Appointments', path: '/operations/appointments' },
@@ -48,6 +50,7 @@ const roleModules: Record<UserRole, { name: string; path: string }[]> = {
   BILLING_STAFF: [{ name: 'Billing', path: '/billing/desk' }],
   ADMIN: [
     { name: 'Administration', path: '/admin' },
+    { name: 'Emergency Desk', path: '/operations/emergency' },
     { name: 'Emergency Center', path: '/emergency/command-center' },
     { name: 'Knowledge Sources', path: '/admin/knowledge-sources' },
     { name: 'User Management', path: '/admin/users' },
@@ -63,8 +66,8 @@ export default function Header() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const dashboard = user ? dashboards[user.role] : null;
-  const authenticatedLinks = user ? roleModules[user.role] : [];
+  const dashboard = user && dashboards[user.role] ? dashboards[user.role] : null;
+  const authenticatedLinks = user && roleModules[user.role] ? roleModules[user.role] : [];
   const navLinks = [
     { name: 'Home', path: '/' },
     { name: 'Specialties', path: '/specialties' },

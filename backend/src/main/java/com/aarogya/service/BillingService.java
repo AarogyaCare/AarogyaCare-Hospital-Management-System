@@ -10,6 +10,8 @@ import com.aarogya.repository.IdempotencyRecordRepository;
 import com.aarogya.repository.InvoiceRepository;
 import com.aarogya.repository.PatientRepository;
 import com.aarogya.repository.PaymentRepository;
+import com.aarogya.repository.UserRepository;
+import com.aarogya.model.UserDocument;
 import com.aarogya.repository.AppointmentRepository;
 import com.aarogya.repository.DoctorRepository;
 import com.aarogya.model.DoctorDocument;
@@ -32,6 +34,7 @@ public class BillingService {
     private final InvoiceRepository invoiceRepository;
     private final PaymentRepository paymentRepository;
     private final PatientRepository patientRepository;
+    private final UserRepository userRepository;
     private final IdempotencyRecordRepository idempotencyRepository;
     private final MongoTemplate mongoTemplate;
     private final UniqueIdGeneratorService idGenerator;
@@ -46,6 +49,7 @@ public class BillingService {
             InvoiceRepository invoiceRepository,
             PaymentRepository paymentRepository,
             PatientRepository patientRepository,
+            UserRepository userRepository,
             IdempotencyRecordRepository idempotencyRepository,
             MongoTemplate mongoTemplate,
             UniqueIdGeneratorService idGenerator,
@@ -55,6 +59,7 @@ public class BillingService {
         this.invoiceRepository = invoiceRepository;
         this.paymentRepository = paymentRepository;
         this.patientRepository = patientRepository;
+        this.userRepository = userRepository;
         this.idempotencyRepository = idempotencyRepository;
         this.mongoTemplate = mongoTemplate;
         this.idGenerator = idGenerator;
@@ -283,10 +288,22 @@ public class BillingService {
             ));
         }
 
+        String patientName = "Patient";
+        if (doc.getPatientId() != null) {
+            PatientDocument p = patientRepository.findById(doc.getPatientId()).orElse(null);
+            if (p != null && p.getUserId() != null) {
+                UserDocument u = userRepository.findById(p.getUserId()).orElse(null);
+                if (u != null && u.getFullName() != null && !u.getFullName().isBlank()) {
+                    patientName = u.getFullName();
+                }
+            }
+        }
+
         return new BillingDtos.InvoiceResponse(
                 doc.getId(),
                 doc.getInvoiceNumber(),
                 doc.getPatientId(),
+                patientName,
                 doc.getAppointmentId(),
                 doc.getTotalAmount(),
                 doc.getDiscountAmount(),

@@ -5,6 +5,8 @@ import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 @Document(collection = "emergency_requests")
 public class EmergencyRequestDocument {
@@ -17,6 +19,14 @@ public class EmergencyRequestDocument {
     @Indexed
     private String patientId;
 
+    @Indexed
+    private String doctorId;
+
+    private String doctorName;
+
+    @Indexed
+    private String appointmentId;
+
     private String contactNumber;
 
     @Indexed
@@ -24,9 +34,10 @@ public class EmergencyRequestDocument {
 
     private String chiefComplaint;
     private String vitalSigns;
+    private String notes;
 
     @Indexed
-    private String status = "INCOMING"; // "INCOMING", "TRIAGED", "STABILIZING", "ADMITTED", "DISCHARGED"
+    private String status = "INCOMING"; // "INCOMING", "ASSIGNED", "ATTENDING", "STABILIZED", "ADMITTED", "DISCHARGED"
 
     @Indexed
     private int priorityScore = 1; // 1 for RED, 2 for YELLOW, 3 for GREEN
@@ -34,26 +45,9 @@ public class EmergencyRequestDocument {
     private Instant createdAt = Instant.now();
     private Instant updatedAt = Instant.now();
 
-    public EmergencyRequestDocument() {}
-
-    public EmergencyRequestDocument(String id, String patientName, String patientId, String contactNumber, String triageLevel, String chiefComplaint, String vitalSigns) {
-        this.id = id;
-        this.patientName = patientName;
-        this.patientId = patientId;
-        this.contactNumber = contactNumber;
-        this.triageLevel = triageLevel;
-        this.chiefComplaint = chiefComplaint;
-        this.vitalSigns = vitalSigns;
-        this.status = "INCOMING";
-        this.priorityScore = "RED".equalsIgnoreCase(triageLevel) ? 1 : "YELLOW".equalsIgnoreCase(triageLevel) ? 2 : 3;
-        this.createdAt = Instant.now();
-        this.updatedAt = Instant.now();
-    }
-
     private String location;
     private String callerName;
     private String emergencyType;
-    private String notes;
 
     @Indexed
     private String incidentNumber;
@@ -72,8 +66,24 @@ public class EmergencyRequestDocument {
     private Instant closedAt;
     private String closedBy;
 
-    private java.util.List<IncidentTimelineEvent> timeline = new java.util.ArrayList<>();
-    private java.util.List<IncidentIntervention> interventions = new java.util.ArrayList<>();
+    private List<IncidentTimelineEvent> timeline = new ArrayList<>();
+    private List<IncidentIntervention> interventions = new ArrayList<>();
+
+    public EmergencyRequestDocument() {}
+
+    public EmergencyRequestDocument(String id, String patientName, String patientId, String contactNumber, String triageLevel, String chiefComplaint, String vitalSigns) {
+        this.id = id;
+        this.patientName = patientName;
+        this.patientId = patientId;
+        this.contactNumber = contactNumber;
+        this.triageLevel = triageLevel;
+        this.chiefComplaint = chiefComplaint;
+        this.vitalSigns = vitalSigns;
+        this.status = "INCOMING";
+        this.priorityScore = "RED".equalsIgnoreCase(triageLevel) ? 1 : "YELLOW".equalsIgnoreCase(triageLevel) ? 2 : 3;
+        this.createdAt = Instant.now();
+        this.updatedAt = Instant.now();
+    }
 
     public static class IncidentTimelineEvent {
         private Instant timestamp = Instant.now();
@@ -150,6 +160,21 @@ public class EmergencyRequestDocument {
     public String getPatientId() { return patientId; }
     public void setPatientId(String patientId) { this.patientId = patientId; }
 
+    public String getDoctorId() { return doctorId != null ? doctorId : assignedDoctorId; }
+    public void setDoctorId(String doctorId) {
+        this.doctorId = doctorId;
+        this.assignedDoctorId = doctorId;
+    }
+
+    public String getDoctorName() { return doctorName != null ? doctorName : assignedDoctorName; }
+    public void setDoctorName(String doctorName) {
+        this.doctorName = doctorName;
+        this.assignedDoctorName = doctorName;
+    }
+
+    public String getAppointmentId() { return appointmentId; }
+    public void setAppointmentId(String appointmentId) { this.appointmentId = appointmentId; }
+
     public String getContactNumber() { return contactNumber; }
     public void setContactNumber(String contactNumber) { this.contactNumber = contactNumber; }
 
@@ -164,6 +189,9 @@ public class EmergencyRequestDocument {
 
     public String getVitalSigns() { return vitalSigns; }
     public void setVitalSigns(String vitalSigns) { this.vitalSigns = vitalSigns; }
+
+    public String getNotes() { return notes; }
+    public void setNotes(String notes) { this.notes = notes; }
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
@@ -186,20 +214,23 @@ public class EmergencyRequestDocument {
     public String getEmergencyType() { return emergencyType; }
     public void setEmergencyType(String emergencyType) { this.emergencyType = emergencyType; }
 
-    public String getNotes() { return notes; }
-    public void setNotes(String notes) { this.notes = notes; }
-
     public String getIncidentNumber() { return incidentNumber; }
     public void setIncidentNumber(String incidentNumber) { this.incidentNumber = incidentNumber; }
 
     public boolean isProvisional() { return isProvisional; }
     public void setProvisional(boolean provisional) { isProvisional = provisional; }
 
-    public String getAssignedDoctorId() { return assignedDoctorId; }
-    public void setAssignedDoctorId(String assignedDoctorId) { this.assignedDoctorId = assignedDoctorId; }
+    public String getAssignedDoctorId() { return assignedDoctorId != null ? assignedDoctorId : doctorId; }
+    public void setAssignedDoctorId(String assignedDoctorId) {
+        this.assignedDoctorId = assignedDoctorId;
+        this.doctorId = assignedDoctorId;
+    }
 
-    public String getAssignedDoctorName() { return assignedDoctorName; }
-    public void setAssignedDoctorName(String assignedDoctorName) { this.assignedDoctorName = assignedDoctorName; }
+    public String getAssignedDoctorName() { return assignedDoctorName != null ? assignedDoctorName : doctorName; }
+    public void setAssignedDoctorName(String assignedDoctorName) {
+        this.assignedDoctorName = assignedDoctorName;
+        this.doctorName = assignedDoctorName;
+    }
 
     public String getAssignedNurseId() { return assignedNurseId; }
     public void setAssignedNurseId(String assignedNurseId) { this.assignedNurseId = assignedNurseId; }
@@ -225,9 +256,9 @@ public class EmergencyRequestDocument {
     public String getClosedBy() { return closedBy; }
     public void setClosedBy(String closedBy) { this.closedBy = closedBy; }
 
-    public java.util.List<IncidentTimelineEvent> getTimeline() { return timeline; }
-    public void setTimeline(java.util.List<IncidentTimelineEvent> timeline) { this.timeline = timeline; }
+    public List<IncidentTimelineEvent> getTimeline() { return timeline; }
+    public void setTimeline(List<IncidentTimelineEvent> timeline) { this.timeline = timeline; }
 
-    public java.util.List<IncidentIntervention> getInterventions() { return interventions; }
-    public void setInterventions(java.util.List<IncidentIntervention> interventions) { this.interventions = interventions; }
+    public List<IncidentIntervention> getInterventions() { return interventions; }
+    public void setInterventions(List<IncidentIntervention> interventions) { this.interventions = interventions; }
 }

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import {
   Stethoscope, User, Clock, CheckCircle2, Plus, Trash2,
   FileText, Activity, ShieldAlert, AlertCircle, Save, Send, Pill, RefreshCw,
@@ -59,6 +59,7 @@ export default function DoctorClinicalWorkspace() {
   const [medicines, setMedicines] = useState<MedicineDto[]>([]);
   const [previousNotes, setPreviousNotes] = useState<ClinicalNoteDto[]>([]);
   const [isLoadingQueue, setIsLoadingQueue] = useState(true);
+  const [emergencyCases, setEmergencyCases] = useState<any[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
@@ -142,8 +143,12 @@ export default function DoctorClinicalWorkspace() {
   const loadAppointments = async () => {
     setIsLoadingQueue(true);
     try {
-      const data = await api.appointments();
+      const [data, emgData] = await Promise.all([
+        api.appointments(),
+        api.emergencyQueue().catch(() => [])
+      ]);
       setAppointments(data);
+      setEmergencyCases(emgData || []);
       const targetId = searchParams.get('appointmentId');
       if (targetId) {
         const found = data.find((a) => a.id === targetId);
@@ -416,6 +421,17 @@ export default function DoctorClinicalWorkspace() {
     }
   };
 
+    const handleEmergencyAction = async (id: string, status: string, notes?: string) => {
+    try {
+      await api.updateEmergencyStatus(id, { status, doctor_notes: notes });
+      showToast(`Emergency status updated to ${status}`);
+      const emg = await api.emergencyQueue().catch(() => []);
+      setEmergencyCases(emg || []);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Failed to update emergency case', 'error');
+    }
+  };
+
   // Filter queue for current doctor if applicable
   const doctorAppointments = appointments.filter((a) => {
     if (user?.role === 'DOCTOR' && a.doctor_id) {
@@ -490,6 +506,113 @@ export default function DoctorClinicalWorkspace() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Left Column: Patient Queue (4 cols) */}
         <div className="lg:col-span-4 bg-white rounded-3xl border border-slate-200 p-5 shadow-sm space-y-4">
+          {/* Emergency On-Call Cases Section */}
+          {emergencyCases.filter((e: any) => e.status !== 'DISCHARGED').length > 0 && (
+            <div className="p-3.5 bg-rose-50/70 border border-rose-300 rounded-2xl space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-rose-800 font-black text-xs">
+                  <span className="w-2.5 h-2.5 rounded-full bg-rose-600 animate-ping" />
+                  <span>Emergency On-Call Cases ({emergencyCases.filter((e: any) => e.status !== 'DISCHARGED').length})</span>
+                </div>
+                <Link to="/operations/emergency" className="text-[10px] text-rose-700 hover:text-rose-900 font-bold underline">
+                  Full Desk &rarr;
+                </Link>
+              </div>
+
+              <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                {emergencyCases
+                  .filter((e: any) => e.status !== 'DISCHARGED')
+                  .map((emg: any) => {
+                    const isRed = emg.triage_level === 'RED';
+                    const isYellow = emg.triage_level === 'YELLOW';
+                    return (
+                      <div
+                        key={emg.id}
+                        className={`p-2.5 rounded-xl border text-xs space-y-1.5 transition ${
+                          isRed
+                            ? 'bg-rose-100/60 border-rose-300'
+                            : isYellow
+                            ? 'bg-amber-100/50 border-amber-300'
+                            : 'bg-white border-slate-200'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-black ${
+                              isRed ? 'bg-rose-600 text-white' : isYellow ? 'bg-amber-500 text-white' : 'bg-emerald-600 text-white'
+                            }`}>
+                              {emg.triage_level}
+                            </span>
+                            <span className="font-bold text-slate-900">{emg.patient_name}</span>
+                            <span className="font-bold text-slate-500 text-[10px]">({emg.patient_id || 'EMG-WALKIN'})</span>
+                          </div>
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-white border text-slate-700">
+                            {emg.status}
+                          </span>
+                        </div>
+
+                        <p className="text-[11px] text-slate-700 line-clamp-2">
+                          <strong>Complaint:</strong> {emg.chief_complaint}
+                        </p>
+                        {emg.vital_signs && (
+                          <p className="text-[10px] text-slate-500 font-mono">
+                            {emg.vital_signs}
+                          </p>
+                        )}
+                        {emg.doctor_name && (
+                          <p className="text-[10px] text-teal-800 font-semibold">
+                            Assigned: <strong>{emg.doctor_name}</strong>
+                          </p>
+                        )}
+
+                        <div className="flex flex-wrap items-center gap-1.5 pt-1 border-t border-rose-200/60">
+                          {emg.status !== 'ATTENDING' && (
+                            <button
+                              type="button"
+                              onClick={() => handleEmergencyAction(emg.id, 'ATTENDING')}
+                              className="px-2 py-0.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-[10px] font-bold transition"
+                            >
+                              Attend
+                            </button>
+                          )}
+                          {emg.status === 'ATTENDING' && (
+                            <button
+                              type="button"
+                              onClick={() => handleEmergencyAction(emg.id, 'STABILIZED')}
+                              className="px-2 py-0.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[10px] font-bold transition"
+                            >
+                              Stabilize
+                            </button>
+                          )}
+                          {emg.status !== 'DISCHARGED' && (
+                            <button
+                              type="button"
+                              onClick={() => handleEmergencyAction(emg.id, 'DISCHARGED')}
+                              className="px-2 py-0.5 bg-slate-600 hover:bg-slate-700 text-white rounded text-[10px] font-bold transition"
+                            >
+                              Discharge
+                            </button>
+                          )}
+                          {emg.appointment_id && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const found = appointments.find((a) => a.id === emg.appointment_id);
+                                if (found) selectAppointment(found);
+                              }}
+                              className="px-2 py-0.5 bg-teal-600 hover:bg-teal-700 text-white rounded text-[10px] font-bold transition ml-auto"
+                            >
+                              EMR &amp; Rx &rarr;
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+          )}
+
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
             <h3 className="text-sm font-bold text-slate-900">Today's Appointment Queue</h3>
             <span className="text-[10px] font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded border border-teal-200">

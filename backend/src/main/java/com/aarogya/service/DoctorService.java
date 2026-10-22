@@ -58,8 +58,14 @@ public class DoctorService {
     }
 
     public Map<String, Object> getAllDoctors(String departmentId, String search, int limit) {
+        return getAllDoctors(departmentId, search, limit, null);
+    }
+
+    public Map<String, Object> getAllDoctors(String departmentId, String search, int limit, Boolean onCallOnly) {
         List<DoctorDocument> docs;
-        if (departmentId != null && !departmentId.isEmpty()) {
+        if (Boolean.TRUE.equals(onCallOnly)) {
+            docs = doctorRepository.findByIsOnCall(true);
+        } else if (departmentId != null && !departmentId.isEmpty()) {
             docs = doctorRepository.findByDepartmentId(departmentId);
         } else {
             docs = doctorRepository.findAll();
@@ -83,19 +89,7 @@ public class DoctorService {
                 }
             }
 
-            Map<String, Object> map = new HashMap<>();
-            map.put("id", doc.getId());
-            map.put("user_id", doc.getUserId());
-            map.put("department_id", doc.getDepartmentId());
-            map.put("department_name", deptName);
-            map.put("full_name", fullName);
-            map.put("qualification", doc.getQualification());
-            map.put("experience_years", doc.getExperienceYears());
-            map.put("room_number", doc.getRoomNumber());
-            map.put("rating", doc.getRating());
-            map.put("specializations", doc.getSpecializations());
-            map.put("consultation_fee", doc.getConsultationFee());
-            items.add(map);
+            items.add(buildDoctorMap(doc, fullName, deptName));
 
             if (limit > 0 && items.size() >= limit) {
                 break;
@@ -115,18 +109,42 @@ public class DoctorService {
         UserDocument user = userRepository.findById(doc.getUserId()).orElse(null);
         DepartmentDocument dept = departmentRepository.findById(doc.getDepartmentId()).orElse(null);
 
+        String fullName = user != null ? user.getFullName() : "Dr. Specialist";
+        String deptName = dept != null ? dept.getName() : "Specialist Care";
+
+        return buildDoctorMap(doc, fullName, deptName);
+    }
+
+    public Map<String, Object> toggleOnCall(String doctorId, boolean isOnCall) {
+        DoctorDocument doc = doctorRepository.findById(doctorId)
+                .orElseThrow(() -> new Exceptions.ResourceNotFoundException("Doctor not found with id: " + doctorId));
+
+        doc.setOnCall(isOnCall);
+        doctorRepository.save(doc);
+
+        UserDocument user = userRepository.findById(doc.getUserId()).orElse(null);
+        DepartmentDocument dept = departmentRepository.findById(doc.getDepartmentId()).orElse(null);
+
+        String fullName = user != null ? user.getFullName() : "Dr. Specialist";
+        String deptName = dept != null ? dept.getName() : "General Medicine";
+
+        return buildDoctorMap(doc, fullName, deptName);
+    }
+
+    private Map<String, Object> buildDoctorMap(DoctorDocument doc, String fullName, String deptName) {
         Map<String, Object> map = new HashMap<>();
         map.put("id", doc.getId());
         map.put("user_id", doc.getUserId());
         map.put("department_id", doc.getDepartmentId());
-        map.put("department_name", dept != null ? dept.getName() : "Specialist Care");
-        map.put("full_name", user != null ? user.getFullName() : "Dr. Specialist");
+        map.put("department_name", deptName);
+        map.put("full_name", fullName);
         map.put("qualification", doc.getQualification());
         map.put("experience_years", doc.getExperienceYears());
         map.put("room_number", doc.getRoomNumber());
         map.put("rating", doc.getRating());
         map.put("specializations", doc.getSpecializations());
         map.put("consultation_fee", doc.getConsultationFee());
+        map.put("is_on_call", doc.isOnCall());
         return map;
     }
 

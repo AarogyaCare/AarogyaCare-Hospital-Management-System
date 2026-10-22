@@ -2,35 +2,55 @@ package com.aarogya.service;
 
 import com.aarogya.dto.EmergencyDtos;
 import com.aarogya.exception.Exceptions;
+import com.aarogya.model.AppointmentDocument;
+import com.aarogya.model.DoctorDocument;
 import com.aarogya.model.EmergencyRequestDocument;
+import com.aarogya.model.PatientDocument;
+import com.aarogya.model.UserDocument;
+import com.aarogya.repository.AppointmentRepository;
+import com.aarogya.repository.DoctorRepository;
 import com.aarogya.repository.EmergencyRequestRepository;
+import com.aarogya.repository.PatientRepository;
+import com.aarogya.repository.UserRepository;
 import com.aarogya.security.UserPrincipal;
 import com.aarogya.systemdesign.id.UniqueIdGeneratorService;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
 
 @Service
 public class EmergencyService {
 
     private final EmergencyRequestRepository emergencyRepository;
     private final AuditService auditService;
+    private final DoctorRepository doctorRepository;
+    private final UserRepository userRepository;
+    private final PatientRepository patientRepository;
+    private final AppointmentRepository appointmentRepository;
     private final UniqueIdGeneratorService idGenerator;
 
-    public EmergencyService(EmergencyRequestRepository emergencyRepository,
-                            AuditService auditService,
-                            UniqueIdGeneratorService idGenerator) {
+    public EmergencyService(
+            EmergencyRequestRepository emergencyRepository,
+            AuditService auditService,
+            DoctorRepository doctorRepository,
+            UserRepository userRepository,
+            PatientRepository patientRepository,
+            AppointmentRepository appointmentRepository,
+            UniqueIdGeneratorService idGenerator) {
         this.emergencyRepository = emergencyRepository;
         this.auditService = auditService;
+        this.doctorRepository = doctorRepository;
+        this.userRepository = userRepository;
+        this.patientRepository = patientRepository;
+        this.appointmentRepository = appointmentRepository;
         this.idGenerator = idGenerator;
     }
 
     private static final Set<String> VALID_STATUSES = Set.of(
-            "INCOMING", "TRIAGED", "STABILIZING", "ADMITTED", "TRANSFERRED", "DISCHARGED", "CANCELLED", "DECEASED"
+            "INCOMING", "ASSIGNED", "ATTENDING", "TRIAGED", "STABILIZING", "STABILIZED", "ADMITTED", "TRANSFERRED", "DISCHARGED", "CANCELLED", "DECEASED"
     );
 
     public EmergencyDtos.EmergencyResponse createEmergencyRequest(EmergencyDtos.EmergencyCreateRequest req, UserPrincipal principal) {
@@ -42,25 +62,52 @@ public class EmergencyService {
         String id = UUID.randomUUID().toString();
         String incidentNumber = "INC-2026-" + String.format("%06d", Math.abs(idGenerator.nextSnowflakeId() % 1000000L));
 
+        // Resolve patient name if patientId is provided and name is not
+        String patientId = req.patientId();
+        if (patientId != null && !patientId.isBlank()) {
+            PatientDocument patient = patientRepository.findById(patientId).orElse(null);
+            if (patient != null && (patientName == null || patientName.isBlank() || "Walk-In Emergency Patient".equals(patientName))) {
+                UserDocument patientUser = userRepository.findById(patient.getUserId()).orElse(null);
+                if (patientUser != null) {
+                    patientName = patientUser.getFullName();
+                }
+            }
+        }
+
+        // Resolve doctor name from doctorId
+        String doctorId = req.doctorId();
+        String doctorName = req.doctorName();
+        if (doctorId != null && !doctorId.isBlank()) {
+            DoctorDocument doctor = doctorRepository.findById(doctorId).orElse(null);
+            if (doctor != null && (doctorName == null || doctorName.isBlank())) {
+                UserDocument doctorUser = userRepository.findById(doctor.getUserId()).orElse(null);
+                if (doctorUser != null) {
+                    doctorName = doctorUser.getFullName();
+                }
+            }
+        }
+
         EmergencyRequestDocument doc = new EmergencyRequestDocument(
                 id,
                 patientName,
-                req.patientId(),
+                patientId,
                 contactNumber,
                 triageLevel,
                 chiefComplaint,
                 req.vitalSigns()
         );
-        doc.setLocation(req.location());
-        doc.setCallerName(req.callerName());
-        doc.setEmergencyType(req.emergencyType());
+        doc.setLocation(req.location() != null ? req.location() : "Main Emergency Intake Bay");
+        doc.setCallerName(req.callerName() != null ? req.callerName() : patientName);
+        doc.setEmergencyType(req.emergencyType() != null ? req.emergencyType() : "ACUTE_CARE");
         doc.setNotes(req.notes());
         doc.setIncidentNumber(incidentNumber);
 
-        boolean isProvisional = (req.patientId() == null || req.patientId().isBlank())
+        boolean isProvisional = (patientId == null || patientId.isBlank())
                 || patientName.toLowerCase().contains("unidentified")
                 || (req.callerName() != null && req.callerName().toLowerCase().contains("trauma"));
         doc.setProvisional(isProvisional);
+        doc.setDoctorId(doctorId);
+        doc.setDoctorName(doctorName);
 
         String authorName = principal != null ? principal.getUsername() : "portal@aarogya.org";
         String roleName = principal != null ? principal.getRole() : "PUBLIC";
@@ -83,6 +130,22 @@ public class EmergencyService {
             ));
         }
 
+        // If doctorId is provided directly, assign doctor & create appointment
+        if (doctorId != null && !doctorId.isBlank() && patientId != null && !patientId.isBlank()) {
+            String appointmentId = createEmergencyAppointment(patientId, doctorId, chiefComplaint, triageLevel);
+            doc.setAppointmentId(appointmentId);
+            doc.setStatus("ASSIGNED");
+            doc.getTimeline().add(new EmergencyRequestDocument.IncidentTimelineEvent(
+                    Instant.now(),
+                    authorName,
+                    roleName,
+                    "DOCTOR_ASSIGNMENT",
+                    "Assigned to on-call doctor " + doctorName + " with emergency token bypass"
+            ));
+        } else {
+            doc.setStatus("INCOMING");
+        }
+
         emergencyRepository.save(doc);
 
         auditService.recordEvent(
@@ -97,45 +160,33 @@ public class EmergencyService {
         return mapToDto(doc);
     }
 
-    private String resolveTriageLevel(EmergencyDtos.EmergencyCreateRequest req) {
-        if (req.triageLevel() != null && !req.triageLevel().isBlank()) {
-            return req.triageLevel().trim().toUpperCase();
-        }
-        if (req.severityLevel() != null && !req.severityLevel().isBlank()) {
-            String sev = req.severityLevel().trim().toUpperCase();
-            if (sev.contains("CRIT") || sev.contains("RED") || sev.contains("STAT")) return "RED";
-            if (sev.contains("URG") || sev.contains("YELLOW")) return "YELLOW";
-            return "GREEN";
-        }
-        if (req.emergencyType() != null && req.emergencyType().toUpperCase().contains("RED")) {
-            return "RED";
-        }
-        return "YELLOW";
-    }
+    private String createEmergencyAppointment(String patientId, String doctorId, String chiefComplaint, String triageLevel) {
+        try {
+            String aptNumber = idGenerator.nextPrefixedId("EMG");
+            String today = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+                    .withZone(ZoneId.systemDefault())
+                    .format(Instant.now());
 
-    private String resolvePatientName(EmergencyDtos.EmergencyCreateRequest req) {
-        if (req.patientName() != null && !req.patientName().isBlank()) {
-            return req.patientName().trim();
-        }
-        if (req.callerName() != null && !req.callerName().isBlank()) {
-            return "Trauma Intake (" + req.callerName().trim() + ")";
-        }
-        return "Unidentified Emergency Patient";
-    }
+            String emergencySlotId = "EMERGENCY-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
 
-    private String resolveChiefComplaint(EmergencyDtos.EmergencyCreateRequest req) {
-        if (req.chiefComplaint() != null && !req.chiefComplaint().isBlank()) {
-            return req.chiefComplaint().trim();
+            AppointmentDocument apt = new AppointmentDocument(
+                    UUID.randomUUID().toString(),
+                    aptNumber,
+                    patientId,
+                    doctorId,
+                    emergencySlotId,
+                    "[EMERGENCY] " + (chiefComplaint != null ? chiefComplaint : "Emergency Intake"),
+                    "IN_PERSON",
+                    "EMG-" + aptNumber
+            );
+            apt.setAppointmentDate(today);
+            apt.setTriageLevel(triageLevel);
+            apt.setStatus("CONFIRMED");
+            appointmentRepository.save(apt);
+            return apt.getId();
+        } catch (Exception e) {
+            return null;
         }
-        StringBuilder sb = new StringBuilder();
-        if (req.emergencyType() != null && !req.emergencyType().isBlank()) {
-            sb.append(req.emergencyType().trim());
-        }
-        if (req.notes() != null && !req.notes().isBlank()) {
-            if (sb.length() > 0) sb.append(" - ");
-            sb.append(req.notes().trim());
-        }
-        return sb.length() > 0 ? sb.toString() : "Acute emergency intake";
     }
 
     public List<EmergencyDtos.EmergencyResponse> getEmergencyQueue(String statusFilter) {
@@ -153,9 +204,18 @@ public class EmergencyService {
         return result;
     }
 
+    public List<EmergencyDtos.EmergencyResponse> getEmergencyQueueForDoctor(String doctorId) {
+        List<EmergencyRequestDocument> docs = emergencyRepository.findByDoctorIdAndStatusNot(doctorId, "DISCHARGED");
+        List<EmergencyDtos.EmergencyResponse> result = new ArrayList<>();
+        for (EmergencyRequestDocument doc : docs) {
+            result.add(mapToDto(doc));
+        }
+        return result;
+    }
+
     public EmergencyDtos.EmergencyDetailResponse getEmergencyDetail(String id, UserPrincipal principal) {
         EmergencyRequestDocument doc = emergencyRepository.findById(id)
-                .orElseThrow(() -> new Exceptions.ResourceNotFoundException("Emergency incident not found with id: " + id));
+                .orElseThrow(() -> new Exceptions.ResourceNotFoundException("Emergency incident not found: " + id));
 
         // Patient role data isolation
         if (principal != null && "patient".equalsIgnoreCase(principal.getRole())) {
@@ -169,26 +229,22 @@ public class EmergencyService {
 
     public EmergencyDtos.EmergencyDetailResponse assignCareTeamAndBay(String id, EmergencyDtos.IncidentAssignRequest req, UserPrincipal principal) {
         EmergencyRequestDocument doc = emergencyRepository.findById(id)
-                .orElseThrow(() -> new Exceptions.ResourceNotFoundException("Emergency incident not found with id: " + id));
+                .orElseThrow(() -> new Exceptions.ResourceNotFoundException("Emergency incident not found: " + id));
 
-        String author = principal != null ? principal.getUsername() : "coordinator@aarogya.org";
-        String role = principal != null ? principal.getRole() : "COORDINATOR";
+        String author = principal != null ? principal.getUsername() : "system";
+        String role = principal != null ? principal.getRole() : "STAFF";
 
-        StringBuilder changes = new StringBuilder();
         if (req.doctorId() != null) {
             doc.setAssignedDoctorId(req.doctorId());
-            doc.setAssignedDoctorName(req.doctorName() != null ? req.doctorName() : req.doctorId());
-            changes.append("Doctor: ").append(doc.getAssignedDoctorName()).append(". ");
+            doc.setDoctorId(req.doctorId());
         }
-        if (req.nurseId() != null) {
-            doc.setAssignedNurseId(req.nurseId());
-            doc.setAssignedNurseName(req.nurseName() != null ? req.nurseName() : req.nurseId());
-            changes.append("Nurse: ").append(doc.getAssignedNurseName()).append(". ");
+        if (req.doctorName() != null) {
+            doc.setAssignedDoctorName(req.doctorName());
+            doc.setDoctorName(req.doctorName());
         }
-        if (req.bay() != null && !req.bay().isBlank()) {
-            doc.setAssignedBay(req.bay().trim());
-            changes.append("Bay: ").append(doc.getAssignedBay()).append(". ");
-        }
+        if (req.nurseId() != null) doc.setAssignedNurseId(req.nurseId());
+        if (req.nurseName() != null) doc.setAssignedNurseName(req.nurseName());
+        if (req.bay() != null) doc.setAssignedBay(req.bay());
 
         if ("INCOMING".equalsIgnoreCase(doc.getStatus())) {
             doc.setStatus("TRIAGED");
@@ -200,26 +256,16 @@ public class EmergencyService {
                 author,
                 role,
                 "CARE_TEAM_ASSIGNED",
-                "Care team and bay updated. " + changes.toString().trim()
+                "Allocated to Bay [" + doc.getAssignedBay() + "], Doctor: " + doc.getAssignedDoctorName() + ", Nurse: " + doc.getAssignedNurseName()
         ));
 
         emergencyRepository.save(doc);
-
-        auditService.recordEvent(
-                principal != null ? principal.getId() : "coordinator",
-                author,
-                "ASSIGN_EMERGENCY_RESOURCES",
-                "EmergencyRequest",
-                id,
-                "Assigned resources: " + changes
-        );
-
         return mapToDetailDto(doc);
     }
 
     public EmergencyDtos.EmergencyDetailResponse recordIntervention(String id, EmergencyDtos.InterventionRequest req, UserPrincipal principal) {
         EmergencyRequestDocument doc = emergencyRepository.findById(id)
-                .orElseThrow(() -> new Exceptions.ResourceNotFoundException("Emergency incident not found with id: " + id));
+                .orElseThrow(() -> new Exceptions.ResourceNotFoundException("Emergency incident not found: " + id));
 
         String author = principal != null ? principal.getUsername() : "nurse@aarogya.org";
         String role = principal != null ? principal.getRole() : "NURSE";
@@ -254,29 +300,15 @@ public class EmergencyService {
         ));
 
         emergencyRepository.save(doc);
-
-        auditService.recordEvent(
-                principal != null ? principal.getId() : "nurse",
-                author,
-                "RECORD_EMERGENCY_INTERVENTION",
-                "EmergencyRequest",
-                id,
-                "Administered " + req.type() + " by " + author
-        );
-
         return mapToDetailDto(doc);
     }
 
     public EmergencyDtos.EmergencyDetailResponse reassessAcuity(String id, EmergencyDtos.ReassessRequest req, UserPrincipal principal) {
         EmergencyRequestDocument doc = emergencyRepository.findById(id)
-                .orElseThrow(() -> new Exceptions.ResourceNotFoundException("Emergency incident not found with id: " + id));
+                .orElseThrow(() -> new Exceptions.ResourceNotFoundException("Emergency incident not found: " + id));
 
         String oldLevel = doc.getTriageLevel();
-        String newLevel = req.triageLevel().trim().toUpperCase();
-        if (!Set.of("RED", "YELLOW", "GREEN").contains(newLevel)) {
-            throw new Exceptions.BadRequestException("Invalid triage acuity level: " + newLevel + ". Must be RED, YELLOW, or GREEN.");
-        }
-
+        String newLevel = req.triageLevel().toUpperCase();
         doc.setTriageLevel(newLevel);
         if (req.vitalSigns() != null && !req.vitalSigns().isBlank()) {
             doc.setVitalSigns(req.vitalSigns());
@@ -284,107 +316,77 @@ public class EmergencyService {
         doc.setUpdatedAt(Instant.now());
 
         String author = principal != null ? principal.getUsername() : "nurse@aarogya.org";
-        String role = principal != null ? principal.getRole() : "CLINICIAN";
+        String role = principal != null ? principal.getRole() : "NURSE";
 
         doc.getTimeline().add(new EmergencyRequestDocument.IncidentTimelineEvent(
                 Instant.now(),
                 author,
                 role,
                 "ACUITY_REASSESSED",
-                "Acuity adjusted from " + oldLevel + " to " + newLevel + ". Reason: " + req.reason()
+                "Acuity adjusted from " + oldLevel + " -> " + newLevel + ". Reason: " + req.reason()
         ));
 
         emergencyRepository.save(doc);
-
-        auditService.recordEvent(
-                principal != null ? principal.getId() : "nurse",
-                author,
-                "REASSESS_EMERGENCY_ACUITY",
-                "EmergencyRequest",
-                id,
-                "Acuity shifted from " + oldLevel + " to " + newLevel + " (" + req.reason() + ")"
-        );
-
         return mapToDetailDto(doc);
     }
 
     public EmergencyDtos.EmergencyDetailResponse concludeDisposition(String id, EmergencyDtos.DispositionRequest req, UserPrincipal principal) {
         EmergencyRequestDocument doc = emergencyRepository.findById(id)
-                .orElseThrow(() -> new Exceptions.ResourceNotFoundException("Emergency incident not found with id: " + id));
+                .orElseThrow(() -> new Exceptions.ResourceNotFoundException("Emergency incident not found: " + id));
 
-        String disp = req.disposition().trim().toUpperCase();
-        if (!Set.of("ADMITTED", "TRANSFERRED", "DISCHARGED", "DECEASED").contains(disp)) {
-            throw new Exceptions.BadRequestException("Invalid disposition: " + disp + ". Allowed: ADMITTED, TRANSFERRED, DISCHARGED, DECEASED");
-        }
+        String disp = req.disposition().toUpperCase();
+        doc.setDisposition(disp);
+        doc.setDispositionNotes(req.notes());
+        doc.setDestinationWard(req.destinationWard());
+        doc.setClosedAt(Instant.now());
+        doc.setClosedBy(principal != null ? principal.getUsername() : "doctor@aarogya.org");
+
+        if ("ADMITTED".equalsIgnoreCase(disp)) doc.setStatus("ADMITTED");
+        else if ("TRANSFERRED".equalsIgnoreCase(disp)) doc.setStatus("TRANSFERRED");
+        else if ("DECEASED".equalsIgnoreCase(disp)) doc.setStatus("DECEASED");
+        else doc.setStatus("DISCHARGED");
+
+        doc.setUpdatedAt(Instant.now());
 
         String author = principal != null ? principal.getUsername() : "doctor@aarogya.org";
         String role = principal != null ? principal.getRole() : "DOCTOR";
-
-        doc.setDisposition(disp);
-        doc.setStatus(disp);
-        doc.setDestinationWard(req.destinationWard());
-        doc.setDispositionNotes(req.notes());
-        doc.setClosedAt(Instant.now());
-        doc.setClosedBy(author);
-        doc.setUpdatedAt(Instant.now());
 
         doc.getTimeline().add(new EmergencyRequestDocument.IncidentTimelineEvent(
                 Instant.now(),
                 author,
                 role,
                 "DISPOSITION_CONCLUDED",
-                "Incident disposition finalized as " + disp + (req.destinationWard() != null ? " (" + req.destinationWard() + ")" : "") + ". " + (req.notes() != null ? req.notes() : "")
+                "Case final disposition: " + disp + (req.destinationWard() != null ? " to " + req.destinationWard() : "") + ". Notes: " + req.notes()
         ));
 
         emergencyRepository.save(doc);
-
-        auditService.recordEvent(
-                principal != null ? principal.getId() : "doctor",
-                author,
-                "CONCLUDE_EMERGENCY_DISPOSITION",
-                "EmergencyRequest",
-                id,
-                "Disposition finalized: " + disp + " by " + author
-        );
-
         return mapToDetailDto(doc);
     }
 
-    public EmergencyDtos.EmergencyDetailResponse getActivePatientEmergency(String patientId) {
-        if (patientId == null || patientId.isBlank()) {
-            throw new Exceptions.BadRequestException("Patient ID is required");
+    public EmergencyDtos.EmergencyDetailResponse getActivePatientEmergency(String patientUserId) {
+        PatientDocument patient = patientRepository.findByUserId(patientUserId).orElse(null);
+        if (patient == null) {
+            return null;
         }
-        List<EmergencyRequestDocument> list = emergencyRepository.findByPatientIdOrderByCreatedAtDesc(patientId);
-        for (EmergencyRequestDocument doc : list) {
-            if (!Set.of("DISCHARGED", "CANCELLED", "DECEASED").contains(doc.getStatus().toUpperCase())) {
-                return mapToDetailDto(doc);
-            }
+        List<EmergencyRequestDocument> activeList = emergencyRepository.findByPatientIdOrderByCreatedAtDesc(patient.getId());
+        if (activeList.isEmpty()) {
+            return null;
         }
-        return null;
+        EmergencyRequestDocument latest = activeList.get(0);
+        if ("DISCHARGED".equalsIgnoreCase(latest.getStatus()) || "CANCELLED".equalsIgnoreCase(latest.getStatus())) {
+            return null;
+        }
+        return mapToDetailDto(latest);
     }
 
     public EmergencyDtos.EmergencySurgeStatsResponse getEmergencySurgeStats() {
         List<EmergencyRequestDocument> all = emergencyRepository.findAll();
-        long active = 0;
-        long red = 0;
-        long yellow = 0;
-        long incoming = 0;
-        long stabilizing = 0;
-        long allocatedBays = 0;
-
-        Set<String> terminal = Set.of("DISCHARGED", "CANCELLED", "DECEASED");
-
-        for (EmergencyRequestDocument doc : all) {
-            String st = doc.getStatus() != null ? doc.getStatus().toUpperCase() : "INCOMING";
-            if (!terminal.contains(st)) {
-                active++;
-                if ("RED".equalsIgnoreCase(doc.getTriageLevel())) red++;
-                if ("YELLOW".equalsIgnoreCase(doc.getTriageLevel())) yellow++;
-                if ("INCOMING".equalsIgnoreCase(st)) incoming++;
-                if ("STABILIZING".equalsIgnoreCase(st)) stabilizing++;
-                if (doc.getAssignedBay() != null && !doc.getAssignedBay().isBlank()) allocatedBays++;
-            }
-        }
+        long active = all.stream().filter(d -> !"DISCHARGED".equalsIgnoreCase(d.getStatus()) && !"CANCELLED".equalsIgnoreCase(d.getStatus())).count();
+        long red = all.stream().filter(d -> "RED".equalsIgnoreCase(d.getTriageLevel()) && !"DISCHARGED".equalsIgnoreCase(d.getStatus())).count();
+        long yellow = all.stream().filter(d -> "YELLOW".equalsIgnoreCase(d.getTriageLevel()) && !"DISCHARGED".equalsIgnoreCase(d.getStatus())).count();
+        long incoming = all.stream().filter(d -> "INCOMING".equalsIgnoreCase(d.getStatus()) || "ASSIGNED".equalsIgnoreCase(d.getStatus())).count();
+        long stabilizing = all.stream().filter(d -> "STABILIZING".equalsIgnoreCase(d.getStatus()) || "ATTENDING".equalsIgnoreCase(d.getStatus())).count();
+        long allocatedBays = all.stream().filter(d -> d.getAssignedBay() != null && !d.getAssignedBay().isBlank()).count();
 
         return new EmergencyDtos.EmergencySurgeStatsResponse(
                 active,
@@ -397,26 +399,49 @@ public class EmergencyService {
     }
 
     public EmergencyDtos.EmergencyResponse updateStatus(String id, String status, UserPrincipal principal) {
-        if (status == null || !VALID_STATUSES.contains(status.trim().toUpperCase())) {
-            throw new Exceptions.BadRequestException("Invalid emergency status: " + status + ". Allowed: " + VALID_STATUSES);
+        return updateStatus(id, new EmergencyDtos.EmergencyStatusUpdateRequest(status, null, null), principal);
+    }
+
+    public EmergencyDtos.EmergencyResponse updateStatus(String id, EmergencyDtos.EmergencyStatusUpdateRequest request, UserPrincipal principal) {
+        if (request.status() == null || !VALID_STATUSES.contains(request.status().trim().toUpperCase())) {
+            throw new Exceptions.BadRequestException("Invalid emergency status: " + request.status() + ". Allowed: " + VALID_STATUSES);
         }
 
         EmergencyRequestDocument doc = emergencyRepository.findById(id)
                 .orElseThrow(() -> new Exceptions.ResourceNotFoundException("Emergency request not found with id: " + id));
 
-        String upperStatus = status.trim().toUpperCase();
+        String upperStatus = request.status().trim().toUpperCase();
         doc.setStatus(upperStatus);
         doc.setUpdatedAt(Instant.now());
 
+        if (request.doctorId() != null && !request.doctorId().isBlank()) {
+            String doctorId = request.doctorId();
+            doc.setDoctorId(doctorId);
+            DoctorDocument doctor = doctorRepository.findById(doctorId).orElse(null);
+            if (doctor != null) {
+                UserDocument doctorUser = userRepository.findById(doctor.getUserId()).orElse(null);
+                if (doctorUser != null) {
+                    doc.setDoctorName(doctorUser.getFullName());
+                }
+            }
+            if (doc.getAppointmentId() == null && doc.getPatientId() != null) {
+                String aptId = createEmergencyAppointment(doc.getPatientId(), doctorId, doc.getChiefComplaint(), doc.getTriageLevel());
+                doc.setAppointmentId(aptId);
+            }
+        }
+        if (request.doctorNotes() != null && !request.doctorNotes().isBlank()) {
+            String existing = doc.getNotes() != null ? doc.getNotes() + "\n" : "";
+            doc.setNotes(existing + request.doctorNotes());
+        }
+
         String author = principal != null ? principal.getUsername() : "nurse@aarogya.org";
         String role = principal != null ? principal.getRole() : "STAFF";
-
         doc.getTimeline().add(new EmergencyRequestDocument.IncidentTimelineEvent(
                 Instant.now(),
                 author,
                 role,
                 "STATUS_UPDATED",
-                "Status advanced to " + upperStatus
+                "Status advanced to " + upperStatus + (request.doctorNotes() != null ? " with note: " + request.doctorNotes() : "")
         ));
 
         emergencyRepository.save(doc);
@@ -433,11 +458,42 @@ public class EmergencyService {
         return mapToDto(doc);
     }
 
+    private String resolveTriageLevel(EmergencyDtos.EmergencyCreateRequest req) {
+        if (req.triageLevel() != null && !req.triageLevel().isBlank()) {
+            return req.triageLevel().trim().toUpperCase();
+        }
+        if (req.severityLevel() != null && !req.severityLevel().isBlank()) {
+            String sev = req.severityLevel().trim().toUpperCase();
+            if (sev.contains("CRIT") || sev.contains("RED") || sev.contains("STAT")) return "RED";
+            if (sev.contains("URG") || sev.contains("YELLOW")) return "YELLOW";
+            return "GREEN";
+        }
+        if (req.emergencyType() != null && req.emergencyType().toUpperCase().contains("RED")) {
+            return "RED";
+        }
+        return "YELLOW";
+    }
+
+    private String resolvePatientName(EmergencyDtos.EmergencyCreateRequest req) {
+        if (req.patientName() != null && !req.patientName().isBlank()) return req.patientName();
+        if (req.callerName() != null && !req.callerName().isBlank()) return req.callerName();
+        return "Walk-In Emergency Patient";
+    }
+
+    private String resolveChiefComplaint(EmergencyDtos.EmergencyCreateRequest req) {
+        if (req.chiefComplaint() != null && !req.chiefComplaint().isBlank()) return req.chiefComplaint();
+        if (req.emergencyType() != null && !req.emergencyType().isBlank()) return "Reported Incident: " + req.emergencyType();
+        return "Acute distress reported at triage desk";
+    }
+
     private EmergencyDtos.EmergencyResponse mapToDto(EmergencyRequestDocument doc) {
         return new EmergencyDtos.EmergencyResponse(
                 doc.getId(),
                 doc.getPatientName(),
                 doc.getPatientId(),
+                doc.getDoctorId(),
+                doc.getDoctorName(),
+                doc.getAppointmentId(),
                 doc.getContactNumber(),
                 doc.getTriageLevel(),
                 doc.getChiefComplaint(),

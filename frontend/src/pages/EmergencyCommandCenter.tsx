@@ -13,7 +13,7 @@ interface EmergencyIncidentItem {
   incident_number?: string;
   patient_name: string;
   patient_id?: string;
-  contact_number: string;
+  contact_number?: string;
   triage_level: string; // RED, YELLOW, GREEN
   chief_complaint: string;
   vital_signs?: string;
@@ -68,7 +68,7 @@ export default function EmergencyCommandCenter() {
         api.emergencyQueue(),
         api.emergencyStats().catch(() => null)
       ]);
-      setIncidents(queueData || []);
+      setIncidents((queueData as any[]) || []);
       if (statsData) setStats(statsData);
     } catch (err) {
       console.error('Failed to load emergency command center data', err);

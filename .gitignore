@@ -21,3 +21,6 @@ logs/
 __pycache__/
 *.pyc
 
+
+# Report artifacts directory
+report/

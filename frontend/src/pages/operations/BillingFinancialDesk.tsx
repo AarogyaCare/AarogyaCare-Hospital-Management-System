@@ -130,11 +130,18 @@ export default function BillingFinancialDesk() {
     }
   };
 
+  const patientMap = availablePatients.reduce<Record<string, string>>((acc, p) => {
+    acc[p.id] = p.name;
+    if (p.uhid) acc[p.uhid] = p.name;
+    return acc;
+  }, {});
+
   const filteredBills = bills.filter((b) => {
+    const patName = b.patient_name || patientMap[b.patient_id] || '';
     const matchesTab = activeTab === 'all' || String(b.status).toUpperCase() === activeTab;
     const matchesSearch =
       (b.invoice_number || '').toLowerCase().includes(search.toLowerCase()) ||
-      (b.patient_name || '').toLowerCase().includes(search.toLowerCase()) ||
+      patName.toLowerCase().includes(search.toLowerCase()) ||
       b.patient_id.toLowerCase().includes(search.toLowerCase());
     return matchesTab && matchesSearch;
   });
@@ -285,8 +292,8 @@ export default function BillingFinancialDesk() {
                       </span>
                     </div>
 
-                    <p className="text-slate-700 font-semibold">
-                      Patient: {bill.patient_name || 'Patient'} <span className="font-mono text-slate-400 font-normal">({bill.patient_id})</span>
+                    <p className="text-slate-700 text-xs">
+                      Patient: <strong className="font-extrabold text-slate-900 text-sm">{bill.patient_name || patientMap[bill.patient_id] || 'Patient'}</strong> <span className="font-mono text-slate-600 font-bold ml-1.5">({bill.patient_id})</span>
                     </p>
 
                     {bill.items && bill.items.length > 0 && (
@@ -382,7 +389,7 @@ export default function BillingFinancialDesk() {
                   >
                     {availablePatients.map((p) => (
                       <option key={p.id} value={p.id}>
-                        {p.name} ({p.uhid})
+                        {p.name} — ID: {p.id} ({p.uhid})
                       </option>
                     ))}
                   </select>
@@ -394,6 +401,14 @@ export default function BillingFinancialDesk() {
                     placeholder="Enter Patient ID (e.g. pat-1)"
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs"
                   />
+                )}
+                {patientIdInput && (
+                  <div className="mt-1.5 p-2 bg-slate-50 rounded-xl border border-slate-200 text-[11px] text-slate-700 flex items-center justify-between">
+                    <span>
+                      Selected Patient: <strong className="font-extrabold text-slate-900">{patientMap[patientIdInput] || 'Patient'}</strong>
+                    </span>
+                    <span className="font-mono font-bold text-slate-600">ID: {patientIdInput}</span>
+                  </div>
                 )}
               </div>
 
@@ -528,7 +543,7 @@ export default function BillingFinancialDesk() {
           invoice={{
             invoiceId: selectedReceiptBill.id,
             invoiceNumber: selectedReceiptBill.invoice_number || selectedReceiptBill.id,
-            patientName: selectedReceiptBill.patient_name || 'Patient',
+            patientName: selectedReceiptBill.patient_name || patientMap[selectedReceiptBill.patient_id] || 'Patient',
             patientUhid: selectedReceiptBill.patient_id,
             date: selectedReceiptBill.created_at ? new Date(selectedReceiptBill.created_at).toLocaleDateString() : new Date().toLocaleDateString(),
             department: 'Hospital Multi-Specialty Services',

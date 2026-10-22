@@ -38,7 +38,7 @@ public class PatientController {
     }
 
     @GetMapping
-    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('DOCTOR', 'NURSE', 'RECEPTIONIST', 'BILLING_STAFF', 'ADMIN')")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('DOCTOR', 'NURSE', 'RECEPTIONIST', 'BILLING_STAFF', 'PHARMACIST', 'ADMIN')")
     public ResponseEntity<List<com.aarogya.dto.PatientDtos.PatientResponse>> searchPatients(
             @RequestParam(required = false) String search) {
         return ResponseEntity.ok(recordService.searchPatients(search));
@@ -97,7 +97,7 @@ public class PatientController {
     }
 
     @GetMapping("/{id}")
-    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('DOCTOR', 'NURSE', 'RECEPTIONIST', 'BILLING_STAFF', 'ADMIN', 'PATIENT')")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('DOCTOR', 'NURSE', 'RECEPTIONIST', 'BILLING_STAFF', 'PHARMACIST', 'ADMIN', 'PATIENT')")
     public ResponseEntity<com.aarogya.dto.PatientDtos.PatientResponse> getPatientById(
             @PathVariable String id,
             @AuthenticationPrincipal UserPrincipal principal) {

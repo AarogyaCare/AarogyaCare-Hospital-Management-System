@@ -11,4 +11,5 @@ import java.util.Optional;
 public interface DoctorRepository extends MongoRepository<DoctorDocument, String> {
     Optional<DoctorDocument> findByUserId(String userId);
     List<DoctorDocument> findByDepartmentId(String departmentId);
+    List<DoctorDocument> findByIsOnCall(boolean isOnCall);
 }

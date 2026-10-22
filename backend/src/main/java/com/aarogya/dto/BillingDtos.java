@@ -30,6 +30,7 @@ public class BillingDtos {
         String id,
         @JsonProperty("invoice_number") String invoiceNumber,
         @JsonProperty("patient_id") String patientId,
+        @JsonProperty("patient_name") String patientName,
         @JsonProperty("appointment_id") String appointmentId,
         @JsonProperty("total_amount") double totalAmount,
         @JsonProperty("discount_amount") double discountAmount,

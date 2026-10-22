@@ -8,6 +8,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -26,10 +27,17 @@ public class EmergencyController {
     }
 
     @GetMapping("/requests")
-    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('NURSE', 'DOCTOR', 'ADMIN', 'RECEPTIONIST')")
+    @PreAuthorize("hasAnyRole('NURSE', 'DOCTOR', 'ADMIN', 'RECEPTIONIST')")
     public ResponseEntity<List<EmergencyDtos.EmergencyResponse>> getEmergencyQueue(
             @RequestParam(required = false) String status) {
         return ResponseEntity.ok(emergencyService.getEmergencyQueue(status));
+    }
+
+    @GetMapping("/doctor/{doctorId}")
+    @PreAuthorize("hasAnyRole('DOCTOR', 'ADMIN', 'NURSE')")
+    public ResponseEntity<List<EmergencyDtos.EmergencyResponse>> getDoctorEmergencyQueue(
+            @PathVariable String doctorId) {
+        return ResponseEntity.ok(emergencyService.getEmergencyQueueForDoctor(doctorId));
     }
 
     @PostMapping("/requests")
@@ -46,16 +54,16 @@ public class EmergencyController {
     }
 
     @PatchMapping("/requests/{id}/status")
-    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('NURSE', 'DOCTOR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('NURSE', 'DOCTOR', 'ADMIN', 'RECEPTIONIST')")
     public ResponseEntity<EmergencyDtos.EmergencyResponse> updateStatus(
             @PathVariable String id,
             @Valid @RequestBody EmergencyDtos.EmergencyStatusUpdateRequest request,
             @AuthenticationPrincipal UserPrincipal principal) {
-        return ResponseEntity.ok(emergencyService.updateStatus(id, request.status(), principal));
+        return ResponseEntity.ok(emergencyService.updateStatus(id, request, principal));
     }
 
     @GetMapping("/requests/{id}")
-    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('NURSE', 'DOCTOR', 'ADMIN', 'RECEPTIONIST', 'PATIENT')")
+    @PreAuthorize("hasAnyRole('NURSE', 'DOCTOR', 'ADMIN', 'RECEPTIONIST', 'PATIENT')")
     public ResponseEntity<EmergencyDtos.EmergencyDetailResponse> getEmergencyDetail(
             @PathVariable String id,
             @AuthenticationPrincipal UserPrincipal principal) {
@@ -63,7 +71,7 @@ public class EmergencyController {
     }
 
     @PatchMapping("/requests/{id}/assign")
-    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('NURSE', 'DOCTOR', 'ADMIN', 'RECEPTIONIST')")
+    @PreAuthorize("hasAnyRole('NURSE', 'DOCTOR', 'ADMIN', 'RECEPTIONIST')")
     public ResponseEntity<EmergencyDtos.EmergencyDetailResponse> assignCareTeamAndBay(
             @PathVariable String id,
             @Valid @RequestBody EmergencyDtos.IncidentAssignRequest request,
@@ -72,7 +80,7 @@ public class EmergencyController {
     }
 
     @PostMapping("/requests/{id}/interventions")
-    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('NURSE', 'DOCTOR')")
+    @PreAuthorize("hasAnyRole('NURSE', 'DOCTOR')")
     public ResponseEntity<EmergencyDtos.EmergencyDetailResponse> recordIntervention(
             @PathVariable String id,
             @Valid @RequestBody EmergencyDtos.InterventionRequest request,
@@ -81,7 +89,7 @@ public class EmergencyController {
     }
 
     @PatchMapping("/requests/{id}/reassess")
-    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('NURSE', 'DOCTOR')")
+    @PreAuthorize("hasAnyRole('NURSE', 'DOCTOR')")
     public ResponseEntity<EmergencyDtos.EmergencyDetailResponse> reassessAcuity(
             @PathVariable String id,
             @Valid @RequestBody EmergencyDtos.ReassessRequest request,
@@ -90,7 +98,7 @@ public class EmergencyController {
     }
 
     @PostMapping("/requests/{id}/disposition")
-    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('DOCTOR', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('DOCTOR', 'ADMIN')")
     public ResponseEntity<EmergencyDtos.EmergencyDetailResponse> concludeDisposition(
             @PathVariable String id,
             @Valid @RequestBody EmergencyDtos.DispositionRequest request,
@@ -99,7 +107,7 @@ public class EmergencyController {
     }
 
     @GetMapping("/patient/active")
-    @org.springframework.security.access.prepost.PreAuthorize("hasRole('PATIENT')")
+    @PreAuthorize("hasRole('PATIENT')")
     public ResponseEntity<EmergencyDtos.EmergencyDetailResponse> getActivePatientEmergency(
             @AuthenticationPrincipal UserPrincipal principal) {
         EmergencyDtos.EmergencyDetailResponse res = emergencyService.getActivePatientEmergency(principal.getId());
@@ -110,7 +118,7 @@ public class EmergencyController {
     }
 
     @GetMapping("/stats")
-    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('NURSE', 'DOCTOR', 'ADMIN', 'RECEPTIONIST')")
+    @PreAuthorize("hasAnyRole('NURSE', 'DOCTOR', 'ADMIN', 'RECEPTIONIST')")
     public ResponseEntity<EmergencyDtos.EmergencySurgeStatsResponse> getEmergencySurgeStats() {
         return ResponseEntity.ok(emergencyService.getEmergencySurgeStats());
     }

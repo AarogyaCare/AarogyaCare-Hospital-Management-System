@@ -183,12 +183,17 @@ export default function ReceptionFrontDesk() {
   const triggerEmergencyAlert = async () => {
     setEmergencyAlert(true);
     try {
-      const res = await api.createEmergency({
+const res = await api.createEmergency({
         caller_name: 'Reception Front Desk',
+        patient_name: 'Code Red Trauma Patient (Bay 1)',
         contact_phone: '+91 44 2829 0000',
+        contact_number: '+91 44 2829 0000',
         emergency_type: 'TRAUMA_CODE_RED',
         location: 'Medora Main Entrance Bay',
         severity_level: 'CRITICAL',
+        triage_level: 'RED',
+        chief_complaint: 'Inbound code red trauma alert triggered by front desk receptionist.',
+        vital_signs: 'BP: Critical, HR: Tachycardic, SpO2: Pending',
         notes: 'Inbound code red trauma alert triggered by front desk receptionist.'
       });
       showToast(`RED CODE DISPATCHED (#${res?.id ? res.id.slice(0, 8) : 'ACTIVE'}): Trauma bay, crash cart, and on-call team alerted.`);

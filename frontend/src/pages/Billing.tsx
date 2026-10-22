@@ -183,8 +183,8 @@ export default function Billing() {
                     ● {bill.paymentStatus}
                   </span>
                 </div>
-                <p className="text-xs text-slate-500 mt-1">
-                  Issued to <strong>{bill.patientName}</strong> ({bill.uhid}) • {bill.department} • {bill.date}
+                <p className="text-xs text-slate-600 mt-1">
+                  Patient: <strong className="font-extrabold text-slate-900">{bill.patientName}</strong> <span className="font-mono text-slate-600 font-bold ml-1">({bill.uhid})</span> • {bill.department} • {bill.date}
                 </p>
               </div>
 
