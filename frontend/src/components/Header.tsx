@@ -143,58 +143,60 @@ export default function Header() {
               );
             })}
 
-            {/* System Design Lab Dropdown */}
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setLabMenuOpen((open) => !open)}
-                aria-haspopup="menu"
-                aria-expanded={labMenuOpen}
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition focus:outline-none focus:ring-2 focus:ring-teal-500 ${
-                  location.pathname.startsWith('/lab/')
-                    ? 'text-teal-900 bg-teal-50/80 border border-teal-200/60'
-                    : 'hover:text-[#002043] hover:bg-slate-100/70'
-                }`}
-              >
-                <Sparkles className="w-3.5 h-3.5 text-teal-600" />
-                <span>System Design Lab</span>
-                <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${labMenuOpen ? 'rotate-180' : ''}`} />
-              </button>
-
-              {labMenuOpen && (
-                <div
-                  role="menu"
-                  aria-label="System Design Lab"
-                  className="absolute left-0 top-full mt-2 w-72 rounded-2xl border border-white/60 bg-white/95 backdrop-blur-2xl p-2 shadow-xl animate-scale-in z-50"
-                  style={{
-                    boxShadow: '0 20px 45px -10px rgba(0, 32, 67, 0.15), 0 0 0 1px rgba(226, 232, 240, 0.8)',
-                  }}
+            {/* System Design Lab Dropdown - Admin Only */}
+            {user?.role === 'ADMIN' && (
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setLabMenuOpen((open) => !open)}
+                  aria-haspopup="menu"
+                  aria-expanded={labMenuOpen}
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition focus:outline-none focus:ring-2 focus:ring-teal-500 ${
+                    location.pathname.startsWith('/lab/')
+                      ? 'text-teal-900 bg-teal-50/80 border border-teal-200/60'
+                      : 'hover:text-[#002043] hover:bg-slate-100/70'
+                  }`}
                 >
-                  <div className="px-3 py-2 border-b border-slate-100 mb-1">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-teal-700">7 Interactive Labs</p>
-                    <p className="text-[11px] text-slate-500">Live distributed architecture simulations</p>
+                  <Sparkles className="w-3.5 h-3.5 text-teal-600" />
+                  <span>System Design Lab</span>
+                  <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${labMenuOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                {labMenuOpen && (
+                  <div
+                    role="menu"
+                    aria-label="System Design Lab"
+                    className="absolute left-0 top-full mt-2 w-72 rounded-2xl border border-white/60 bg-white/95 backdrop-blur-2xl p-2 shadow-xl animate-scale-in z-50"
+                    style={{
+                      boxShadow: '0 20px 45px -10px rgba(0, 32, 67, 0.15), 0 0 0 1px rgba(226, 232, 240, 0.8)',
+                    }}
+                  >
+                    <div className="px-3 py-2 border-b border-slate-100 mb-1">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-teal-700">7 Interactive Labs</p>
+                      <p className="text-[11px] text-slate-500">Live distributed architecture simulations</p>
+                    </div>
+                    {labLinks.map((link, index) => (
+                      <Link
+                        key={link.path}
+                        role="menuitem"
+                        to={link.path}
+                        onClick={() => setLabMenuOpen(false)}
+                        className={`block px-3 py-2 rounded-xl text-xs transition ${
+                          location.pathname === link.path
+                            ? 'bg-teal-50 text-teal-900 font-bold'
+                            : 'text-slate-700 hover:bg-slate-50 hover:text-[#002043]'
+                        }`}
+                      >
+                        <div className="font-semibold text-slate-900 flex items-center justify-between">
+                          <span>{index + 1}. {link.name}</span>
+                        </div>
+                        <p className="text-[10px] text-slate-400 mt-0.5">{link.desc}</p>
+                      </Link>
+                    ))}
                   </div>
-                  {labLinks.map((link, index) => (
-                    <Link
-                      key={link.path}
-                      role="menuitem"
-                      to={link.path}
-                      onClick={() => setLabMenuOpen(false)}
-                      className={`block px-3 py-2 rounded-xl text-xs transition ${
-                        location.pathname === link.path
-                          ? 'bg-teal-50 text-teal-900 font-bold'
-                          : 'text-slate-700 hover:bg-slate-50 hover:text-[#002043]'
-                      }`}
-                    >
-                      <div className="font-semibold text-slate-900 flex items-center justify-between">
-                        <span>{index + 1}. {link.name}</span>
-                      </div>
-                      <p className="text-[10px] text-slate-400 mt-0.5">{link.desc}</p>
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            )}
           </nav>
 
           {/* User Account / Action CTAs */}
@@ -323,38 +325,40 @@ export default function Header() {
               </Link>
             ))}
 
-            <div className="pt-2 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={() => setLabMenuOpen((open) => !open)}
-                aria-expanded={labMenuOpen}
-                className="flex w-full items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-bold text-teal-900 bg-teal-50/70"
-              >
-                <span className="flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-teal-600" />
-                  <span>System Design Labs</span>
-                </span>
-                <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${labMenuOpen ? 'rotate-180' : ''}`} />
-              </button>
+            {user?.role === 'ADMIN' && (
+              <div className="pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setLabMenuOpen((open) => !open)}
+                  aria-expanded={labMenuOpen}
+                  className="flex w-full items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-bold text-teal-900 bg-teal-50/70"
+                >
+                  <span className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-teal-600" />
+                    <span>System Design Labs</span>
+                  </span>
+                  <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${labMenuOpen ? 'rotate-180' : ''}`} />
+                </button>
 
-              {labMenuOpen && (
-                <div className="mt-1 space-y-1 pl-4 border-l-2 border-teal-200 ml-4 py-1">
-                  {labLinks.map((link, index) => (
-                    <Link
-                      key={link.path}
-                      to={link.path}
-                      onClick={() => {
-                        setMobileMenuOpen(false);
-                        setLabMenuOpen(false);
-                      }}
-                      className="block px-3 py-1.5 rounded-lg text-xs font-medium text-slate-700 hover:bg-teal-50"
-                    >
-                      {index + 1}. {link.name}
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </div>
+                {labMenuOpen && (
+                  <div className="mt-1 space-y-1 pl-4 border-l-2 border-teal-200 ml-4 py-1">
+                    {labLinks.map((link, index) => (
+                      <Link
+                        key={link.path}
+                        to={link.path}
+                        onClick={() => {
+                          setMobileMenuOpen(false);
+                          setLabMenuOpen(false);
+                        }}
+                        className="block px-3 py-1.5 rounded-lg text-xs font-medium text-slate-700 hover:bg-teal-50"
+                      >
+                        {index + 1}. {link.name}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="pt-3 border-t border-slate-100 flex flex-col gap-2">
               {user && dashboard ? (

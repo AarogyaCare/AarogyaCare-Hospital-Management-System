@@ -131,14 +131,14 @@ export default function App() {
               <Route path="/admin/system-health" element={authenticated('ADMIN')(<SystemHealthMonitoring />)} />
               <Route path="/admin/reports" element={authenticated('ADMIN')(<ReportsAuditTrail />)} />
 
-              {/* System Design Lab Components (25-31) */}
-              <Route path="/lab/rate-limiter" element={<RateLimiterLab />} />
-              <Route path="/lab/consistent-hashing" element={<ConsistentHashingLab />} />
-              <Route path="/lab/key-value-store" element={<KeyValueStoreLab />} />
-              <Route path="/lab/unique-id-generator" element={<UniqueIdGeneratorLab />} />
-              <Route path="/lab/url-shortener" element={<UrlShortenerLab />} />
-              <Route path="/lab/web-crawler" element={<WebCrawlerLab />} />
-              <Route path="/lab/autocomplete" element={<AutocompleteLab />} />
+              {/* System Design Lab Components (25-31) - Restricted to ADMIN */}
+              <Route path="/lab/rate-limiter" element={authenticated('ADMIN')(<RateLimiterLab />)} />
+              <Route path="/lab/consistent-hashing" element={authenticated('ADMIN')(<ConsistentHashingLab />)} />
+              <Route path="/lab/key-value-store" element={authenticated('ADMIN')(<KeyValueStoreLab />)} />
+              <Route path="/lab/unique-id-generator" element={authenticated('ADMIN')(<UniqueIdGeneratorLab />)} />
+              <Route path="/lab/url-shortener" element={authenticated('ADMIN')(<UrlShortenerLab />)} />
+              <Route path="/lab/web-crawler" element={authenticated('ADMIN')(<WebCrawlerLab />)} />
+              <Route path="/lab/autocomplete" element={authenticated('ADMIN')(<AutocompleteLab />)} />
 
               {/* Fallback */}
               <Route path="*" element={<NotFound />} />

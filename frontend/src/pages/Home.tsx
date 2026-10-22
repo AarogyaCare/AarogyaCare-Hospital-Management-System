@@ -1,3 +1,4 @@
+import { useAuth } from '../context/AuthContext';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
@@ -13,6 +14,7 @@ import { HospitalDoctor, mapDoctorResponse } from '../services/doctorMapping';
 
 export default function Home() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'all' | 'critical' | 'surgical'>('all');
   const [searchDoctor, setSearchDoctor] = useState('');
   const [doctorList, setDoctorList] = useState<HospitalDoctor[]>([]);
@@ -53,7 +55,7 @@ export default function Home() {
         {/* Full-bleed Medora Campus Background */}
         <div className="absolute inset-0">
           <img
-            src="/medora-campus.png"
+            src="/medora-hero-bg.jpg"
             alt="Medora Multi Speciality Hospital Campus"
             className="w-full h-full object-cover object-center"
           />
@@ -143,28 +145,7 @@ export default function Home() {
               </Link>
             </div>
 
-            {/* Live Stats Strip — Dark Bordered Frosted Cards */}
-            <div className="flex flex-wrap items-center gap-3 pt-4 border-t border-slate-700/60">
-              {[
-                { value: '45+', label: 'Specialities', icon: Building2, color: 'text-teal-400' },
-                { value: '1500+', label: 'Beds', icon: Heart, color: 'text-rose-400' },
-                { value: '15K+', label: 'Surgeries', icon: TrendingUp, color: 'text-sky-400' },
-                { value: '4.9★', label: '24K+ Reviews', icon: Star, color: 'text-amber-400' },
-              ].map((stat, i) => {
-                const SIcon = stat.icon;
-                return (
-                  <div key={i} className="flex items-center gap-2.5 px-3.5 py-2 rounded-xl bg-slate-950/80 backdrop-blur-md border-2 border-slate-800 shadow-lg">
-                    <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
-                      <SIcon className={`w-3.5 h-3.5 ${stat.color}`} />
-                    </div>
-                    <div>
-                      <span className="block text-sm font-black text-white leading-none">{stat.value}</span>
-                      <span className="text-[10px] text-slate-300 font-bold tracking-tight">{stat.label}</span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+
 
           </div>
         </div>
@@ -409,7 +390,7 @@ export default function Home() {
       {/* 3. SCALLOP QUICK-SERVICES STRIP (MEDANTA 7-CARD ARCHITECTURE)  */}
       {/* ============================================================== */}
       <section className="max-w-7xl mx-auto px-4 md:px-8 pt-2">
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8 gap-3 sm:gap-3.5">
+        <div className={`grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 ${user?.role === 'ADMIN' ? 'xl:grid-cols-8' : 'xl:grid-cols-7'} gap-3 sm:gap-3.5`}>
           {[
             {
               title: 'Get Health Checkup',
@@ -467,7 +448,7 @@ export default function Home() {
               color: 'text-rose-700 bg-rose-50',
               bgImage: undefined, // Explicitly no photo background per user requirement!
             },
-          ].map((item, idx) => {
+          ].filter(item => item.title !== 'System Design Labs' || user?.role === 'ADMIN').map((item, idx) => {
             const Icon = item.icon;
             return (
               <Link
