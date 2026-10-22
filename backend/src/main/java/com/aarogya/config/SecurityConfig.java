@@ -77,7 +77,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/v1/system-design/ratelimiter/metrics").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.POST, "/api/v1/system-design/hashring/nodes/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.DELETE, "/api/v1/system-design/hashring/nodes/**").hasRole("ADMIN")
-                .requestMatchers("/api/v1/system-design/**").permitAll()
+                .requestMatchers("/api/v1/system-design/**").hasRole("ADMIN")
                 .requestMatchers("/health/**").permitAll()
                 // Emergency intake registration (public emergency intake with rate limiter priority bypass)
                 .requestMatchers(HttpMethod.POST, "/api/v1/emergency/requests").permitAll()

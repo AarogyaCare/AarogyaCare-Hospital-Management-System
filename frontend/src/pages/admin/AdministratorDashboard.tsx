@@ -103,6 +103,13 @@ export default function AdministratorDashboard() {
             <span>Sync</span>
           </button>
           <Link
+            to="/lab/rate-limiter"
+            className="px-3.5 py-2 bg-teal-500/30 hover:bg-teal-500/50 border border-teal-400/40 text-teal-200 rounded-xl text-xs font-semibold backdrop-blur-md transition flex items-center gap-1.5"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-teal-300" />
+            <span>System Design Labs</span>
+          </Link>
+          <Link
             to="/operations/emergency"
             className="px-3.5 py-2 bg-rose-600/30 hover:bg-rose-600/50 border border-rose-400/40 text-rose-200 rounded-xl text-xs font-semibold backdrop-blur-md transition flex items-center gap-1.5"
           >
@@ -214,6 +221,20 @@ export default function AdministratorDashboard() {
                 <p className="text-slate-500 text-[11px] mt-0.5">Aggregated audit log of triage events, consultation notes, dispensing, and billing</p>
               </div>
               <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-teal-700 transition" />
+            </Link>
+
+            <Link
+              to="/lab/rate-limiter"
+              className="p-4 bg-teal-50/80 hover:bg-teal-100/70 rounded-2xl border border-teal-200/80 transition flex items-center justify-between text-xs group"
+            >
+              <div>
+                <h4 className="font-bold text-teal-950 group-hover:text-teal-900 flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-teal-600" />
+                  <span>UCS3513 System Design Labs (7 Interactive Simulations)</span>
+                </h4>
+                <p className="text-teal-700/80 text-[11px] mt-0.5">Rate limiter, Consistent Hash Ring, Snowflake IDs, LSM store, Web crawler, and Autocomplete Trie</p>
+              </div>
+              <ArrowRight className="w-4 h-4 text-teal-600 group-hover:translate-x-1 transition-transform" />
             </Link>
           </div>
         </div>

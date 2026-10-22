@@ -441,13 +441,25 @@ export default function Home() {
               color: 'text-indigo-700 bg-indigo-50',
               bgImage: 'https://images.unsplash.com/photo-1516549655169-df83a0774514?auto=format&fit=crop&w=400&q=80',
             },
-            {
-              title: 'System Design Labs',
-              icon: Zap,
-              path: '/lab/rate-limiter',
-              color: 'text-rose-700 bg-rose-50',
-              bgImage: undefined, // Explicitly no photo background per user requirement!
-            },
+            ...(user?.role === 'ADMIN'
+              ? [
+                  {
+                    title: 'System Design Labs',
+                    icon: Zap,
+                    path: '/lab/rate-limiter',
+                    color: 'text-rose-700 bg-rose-50',
+                    bgImage: undefined,
+                  },
+                ]
+              : [
+                  {
+                    title: '24/7 Emergency Care',
+                    icon: Zap,
+                    path: '/portal/emergency',
+                    color: 'text-rose-700 bg-rose-50',
+                    bgImage: 'https://images.unsplash.com/photo-1516549655169-df83a0774514?auto=format&fit=crop&w=400&q=80',
+                  },
+                ]),
           ].map((item, idx) => {
             const Icon = item.icon;
             return (
@@ -804,27 +816,51 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="bg-white/10 rounded-2xl p-6 border border-white/15 backdrop-blur-md flex flex-col justify-between">
-            <div>
-              <div className="flex items-center gap-1.5 text-xs font-bold text-amber-300">
-                <Sparkles className="w-4 h-4" />
-                <span>UCS3513 System Design Lab</span>
+          {user?.role === 'ADMIN' ? (
+            <div className="bg-white/10 rounded-2xl p-6 border border-white/15 backdrop-blur-md flex flex-col justify-between">
+              <div>
+                <div className="flex items-center gap-1.5 text-xs font-bold text-amber-300">
+                  <Sparkles className="w-4 h-4" />
+                  <span>UCS3513 System Design Lab</span>
+                </div>
+                <h4 className="text-lg font-bold text-white mt-1.5">Hospital Distributed Architecture</h4>
+                <p className="text-slate-300 text-xs mt-2 leading-relaxed">
+                  Explore real-time algorithmic telemetry powering Medora: Token Bucket Rate Limiting, Consistent Hash Ring partition, and Distributed Autocomplete Trie.
+                </p>
               </div>
-              <h4 className="text-lg font-bold text-white mt-1.5">Hospital Distributed Architecture</h4>
-              <p className="text-slate-300 text-xs mt-2 leading-relaxed">
-                Explore real-time algorithmic telemetry powering Medora: Token Bucket Rate Limiting, Consistent Hash Ring partition, and Distributed Autocomplete Trie.
-              </p>
+              <div className="pt-4 mt-4 border-t border-white/15 flex items-center justify-between">
+                <span className="text-xs text-teal-300 font-semibold">7 Interactive Labs</span>
+                <Link
+                  to="/lab/rate-limiter"
+                  className="px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white text-xs font-bold rounded-xl transition"
+                >
+                  Launch Lab →
+                </Link>
+              </div>
             </div>
-            <div className="pt-4 mt-4 border-t border-white/15 flex items-center justify-between">
-              <span className="text-xs text-teal-300 font-semibold">7 Interactive Labs</span>
-              <Link
-                to="/lab/rate-limiter"
-                className="px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white text-xs font-bold rounded-xl transition"
-              >
-                Launch Lab →
-              </Link>
+          ) : (
+            <div className="bg-white/10 rounded-2xl p-6 border border-white/15 backdrop-blur-md flex flex-col justify-between">
+              <div>
+                <div className="flex items-center gap-1.5 text-xs font-bold text-teal-300">
+                  <Award className="w-4 h-4" />
+                  <span>Accreditation & Quality Care</span>
+                </div>
+                <h4 className="text-lg font-bold text-white mt-1.5">NABH & JCI Quaternary Standards</h4>
+                <p className="text-slate-300 text-xs mt-2 leading-relaxed">
+                  Medora Clinical Campus delivers NABH Digital Health accredited protocol-driven care with 24/7 trauma response, robotic surgery suites, and digital prescription tracking.
+                </p>
+              </div>
+              <div className="pt-4 mt-4 border-t border-white/15 flex items-center justify-between">
+                <span className="text-xs text-teal-300 font-semibold">Emergency: 1066</span>
+                <Link
+                  to="/appointments/book"
+                  className="px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white text-xs font-bold rounded-xl transition"
+                >
+                  Book Appointment →
+                </Link>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </section>
     </div>
