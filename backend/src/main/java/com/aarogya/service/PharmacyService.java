@@ -1,15 +1,28 @@
 package com.aarogya.service;
 
 import com.aarogya.dto.PharmacyDtos;
+import com.aarogya.dto.PrescriptionDtos;
 import com.aarogya.exception.Exceptions;
+import com.aarogya.model.DoctorDocument;
 import com.aarogya.model.IdempotencyRecordDocument;
 import com.aarogya.model.InventoryTransactionDocument;
 import com.aarogya.model.MedicineDocument;
+import com.aarogya.model.PatientDocument;
+import com.aarogya.model.PrescriptionDocument;
+import com.aarogya.model.UserDocument;
+import com.aarogya.repository.DoctorRepository;
 import com.aarogya.repository.IdempotencyRecordRepository;
 import com.aarogya.repository.InventoryTransactionRepository;
 import com.aarogya.repository.MedicineRepository;
+import com.aarogya.repository.PatientRepository;
+import com.aarogya.repository.PrescriptionRepository;
+import com.aarogya.repository.UserRepository;
 import com.aarogya.security.UserPrincipal;
+import com.aarogya.systemdesign.cache.CacheService;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.springframework.data.mongodb.core.FindAndModifyOptions;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -17,22 +30,25 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.time.Instant;
-import java.util.*;
-
-import com.aarogya.dto.PrescriptionDtos;
-import com.aarogya.model.DoctorDocument;
-import com.aarogya.model.PrescriptionDocument;
-import com.aarogya.model.UserDocument;
-import com.aarogya.repository.DoctorRepository;
-import com.aarogya.repository.PrescriptionRepository;
-import com.aarogya.repository.PatientRepository;
-import com.aarogya.model.PatientDocument;
-import com.aarogya.repository.UserRepository;
-import com.aarogya.systemdesign.cache.CacheService;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 @Service
 public class PharmacyService {
+
+    private static final String ALL_MEDICINES_CACHE_KEY = "medicines:all";
+    private static final String PHARMACY_INVENTORY_CACHE_KEY = "pharmacy:inventory";
+
+    private static final Duration MEDICINES_CACHE_TTL = Duration.ofMinutes(30);
+    private static final Duration INVENTORY_CACHE_TTL = Duration.ofMinutes(2);
+
+    private static final String STATUS_OUT_OF_STOCK = "OUT_OF_STOCK";
+    private static final String STATUS_LOW_STOCK = "LOW_STOCK";
+    private static final String STATUS_OPTIMAL = "OPTIMAL";
 
     private final MedicineRepository medicineRepository;
     private final InventoryTransactionRepository transactionRepository;
@@ -44,9 +60,10 @@ public class PharmacyService {
     private final CacheService cacheService;
     private final MongoTemplate mongoTemplate;
     private final AuditService auditService;
+
     private final ObjectMapper objectMapper = new ObjectMapper()
-            .registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule())
-            .disable(com.fasterxml.jackson.databind.SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+            .registerModule(new JavaTimeModule())
+            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 
     public PharmacyService(
             MedicineRepository medicineRepository,
@@ -59,6 +76,7 @@ public class PharmacyService {
             CacheService cacheService,
             MongoTemplate mongoTemplate,
             AuditService auditService) {
+
         this.medicineRepository = medicineRepository;
         this.transactionRepository = transactionRepository;
         this.idempotencyRepository = idempotencyRepository;
@@ -72,59 +90,92 @@ public class PharmacyService {
     }
 
     public List<PharmacyDtos.MedicineResponse> getAllMedicines() {
-        List<MedicineDocument> list = medicineRepository.findAll();
+        return cacheService.getOrLoad(
+                ALL_MEDICINES_CACHE_KEY,
+                MEDICINES_CACHE_TTL,
+                new TypeReference<List<PharmacyDtos.MedicineResponse>>() {},
+                this::loadAllMedicines
+        );
+    }
+
+    private List<PharmacyDtos.MedicineResponse> loadAllMedicines() {
+        List<MedicineDocument> medicines = medicineRepository.findAll();
         List<PharmacyDtos.MedicineResponse> result = new ArrayList<>();
-        for (MedicineDocument m : list) {
+
+        for (MedicineDocument medicine : medicines) {
             result.add(new PharmacyDtos.MedicineResponse(
-                    m.getId(),
-                    m.getCode(),
-                    m.getName(),
-                    m.getBrandName(),
-                    m.getCategory(),
-                    m.getDosageForm(),
-                    m.getStrength(),
-                    m.getUnitPrice(),
-                    m.getCurrentStock(),
-                    m.getMinimumThreshold(),
-                    m.getCurrentStock() <= m.getMinimumThreshold()
+                    medicine.getId(),
+                    medicine.getCode(),
+                    medicine.getName(),
+                    medicine.getBrandName(),
+                    medicine.getCategory(),
+                    medicine.getDosageForm(),
+                    medicine.getStrength(),
+                    medicine.getUnitPrice(),
+                    medicine.getCurrentStock(),
+                    medicine.getMinimumThreshold(),
+                    medicine.getCurrentStock() <= medicine.getMinimumThreshold()
             ));
         }
+
         return result;
     }
 
     public List<PharmacyDtos.InventoryItemResponse> getInventory() {
-        List<MedicineDocument> list = medicineRepository.findAll();
+        return cacheService.getOrLoad(
+                PHARMACY_INVENTORY_CACHE_KEY,
+                INVENTORY_CACHE_TTL,
+                new TypeReference<List<PharmacyDtos.InventoryItemResponse>>() {},
+                this::loadInventory
+        );
+    }
+
+    private List<PharmacyDtos.InventoryItemResponse> loadInventory() {
+        List<MedicineDocument> medicines = medicineRepository.findAll();
         List<PharmacyDtos.InventoryItemResponse> result = new ArrayList<>();
-        for (MedicineDocument m : list) {
-            String status = m.getCurrentStock() <= 0 ? "OUT_OF_STOCK"
-                    : m.getCurrentStock() <= m.getMinimumThreshold() ? "LOW_STOCK"
-                    : "OPTIMAL";
+
+        for (MedicineDocument medicine : medicines) {
+            String status = medicine.getCurrentStock() <= 0
+                    ? STATUS_OUT_OF_STOCK
+                    : medicine.getCurrentStock() <= medicine.getMinimumThreshold()
+                    ? STATUS_LOW_STOCK
+                    : STATUS_OPTIMAL;
 
             result.add(new PharmacyDtos.InventoryItemResponse(
-                    m.getId(),
-                    m.getCode(),
-                    m.getName(),
-                    m.getBrandName(),
-                    m.getCategory(),
-                    m.getDosageForm(),
-                    m.getStrength(),
-                    m.getUnitPrice(),
-                    m.getCurrentStock(),
-                    m.getMinimumThreshold(),
+                    medicine.getId(),
+                    medicine.getCode(),
+                    medicine.getName(),
+                    medicine.getBrandName(),
+                    medicine.getCategory(),
+                    medicine.getDosageForm(),
+                    medicine.getStrength(),
+                    medicine.getUnitPrice(),
+                    medicine.getCurrentStock(),
+                    medicine.getMinimumThreshold(),
                     status
             ));
         }
+
         return result;
     }
 
-    public PharmacyDtos.StockAdjustmentResponse adjustStock(PharmacyDtos.StockAdjustmentRequest req, String idempotencyKey, UserPrincipal principal) {
-        // 1. Check idempotency record
+    public PharmacyDtos.StockAdjustmentResponse adjustStock(
+            PharmacyDtos.StockAdjustmentRequest req,
+            String idempotencyKey,
+            UserPrincipal principal) {
+
         if (idempotencyKey != null && !idempotencyKey.trim().isEmpty()) {
-            Optional<IdempotencyRecordDocument> existing = idempotencyRepository.findByIdempotencyKey(idempotencyKey);
+            Optional<IdempotencyRecordDocument> existing =
+                    idempotencyRepository.findByIdempotencyKey(idempotencyKey);
+
             if (existing.isPresent()) {
                 try {
-                    return objectMapper.readValue(existing.get().getResponsePayload(), PharmacyDtos.StockAdjustmentResponse.class);
-                } catch (Exception ignored) {}
+                    return objectMapper.readValue(
+                            existing.get().getResponsePayload(),
+                            PharmacyDtos.StockAdjustmentResponse.class
+                    );
+                } catch (Exception ignored) {
+                }
             }
         }
 
@@ -134,10 +185,17 @@ public class PharmacyService {
         int newStock;
 
         if ("DISPENSE".equals(type)) {
-            // Authoritative Atomic Stock Decrement: currentStock >= quantity
-            // NOTE: MongoTemplate requires BSON field "_id" for @Id fields
-            Query query = Query.query(Criteria.where("_id").is(req.medicineId()).and("currentStock").gte(qty));
-            Update update = new Update().inc("currentStock", -qty).set("updatedAt", Instant.now());
+            Query query = Query.query(
+                    Criteria.where("_id")
+                            .is(req.medicineId())
+                            .and("currentStock")
+                            .gte(qty)
+            );
+
+            Update update = new Update()
+                    .inc("currentStock", -qty)
+                    .set("updatedAt", Instant.now());
+
             MedicineDocument updated = mongoTemplate.findAndModify(
                     query,
                     update,
@@ -146,16 +204,31 @@ public class PharmacyService {
             );
 
             if (updated == null) {
-                MedicineDocument med = medicineRepository.findById(req.medicineId())
-                        .orElseThrow(() -> new Exceptions.ResourceNotFoundException("Medicine not found with id: " + req.medicineId()));
-                throw new Exceptions.ConflictException("Insufficient pharmacy inventory for '" + med.getName() + "'. Available: " + med.getCurrentStock() + ", Requested: " + qty);
+                MedicineDocument medicine = medicineRepository.findById(req.medicineId())
+                        .orElseThrow(() ->
+                                new Exceptions.ResourceNotFoundException(
+                                        "Medicine not found with id: " + req.medicineId()
+                                ));
+
+                throw new Exceptions.ConflictException(
+                        "Insufficient pharmacy inventory for '" + medicine.getName()
+                                + "'. Available: " + medicine.getCurrentStock()
+                                + ", Requested: " + qty
+                );
             }
 
             previousStock = updated.getCurrentStock() + qty;
             newStock = updated.getCurrentStock();
+
         } else if ("RESTOCK".equals(type)) {
-            Query query = Query.query(Criteria.where("_id").is(req.medicineId()));
-            Update update = new Update().inc("currentStock", qty).set("updatedAt", Instant.now());
+            Query query = Query.query(
+                    Criteria.where("_id").is(req.medicineId())
+            );
+
+            Update update = new Update()
+                    .inc("currentStock", qty)
+                    .set("updatedAt", Instant.now());
+
             MedicineDocument updated = mongoTemplate.findAndModify(
                     query,
                     update,
@@ -164,25 +237,33 @@ public class PharmacyService {
             );
 
             if (updated == null) {
-                throw new Exceptions.ResourceNotFoundException("Medicine not found with id: " + req.medicineId());
+                throw new Exceptions.ResourceNotFoundException(
+                        "Medicine not found with id: " + req.medicineId()
+                );
             }
 
             previousStock = updated.getCurrentStock() - qty;
             newStock = updated.getCurrentStock();
+
         } else {
-            // Audit adjustment
-            MedicineDocument med = medicineRepository.findById(req.medicineId())
-                    .orElseThrow(() -> new Exceptions.ResourceNotFoundException("Medicine not found with id: " + req.medicineId()));
-            previousStock = med.getCurrentStock();
+            MedicineDocument medicine = medicineRepository.findById(req.medicineId())
+                    .orElseThrow(() ->
+                            new Exceptions.ResourceNotFoundException(
+                                    "Medicine not found with id: " + req.medicineId()
+                            ));
+
+            previousStock = medicine.getCurrentStock();
             newStock = qty;
-            med.setCurrentStock(newStock);
-            med.setUpdatedAt(Instant.now());
-            medicineRepository.save(med);
+
+            medicine.setCurrentStock(newStock);
+            medicine.setUpdatedAt(Instant.now());
+
+            medicineRepository.save(medicine);
         }
 
-        // Persist durable inventory transaction
         String txId = UUID.randomUUID().toString();
-        InventoryTransactionDocument tx = new InventoryTransactionDocument(
+
+        InventoryTransactionDocument transaction = new InventoryTransactionDocument(
                 txId,
                 req.medicineId(),
                 type,
@@ -193,32 +274,34 @@ public class PharmacyService {
                 idempotencyKey,
                 principal != null ? principal.getUsername() : "system"
         );
-        transactionRepository.save(tx);
 
-        PharmacyDtos.StockAdjustmentResponse response = new PharmacyDtos.StockAdjustmentResponse(
-                txId,
-                req.medicineId(),
-                previousStock,
-                newStock,
-                "SUCCESS"
-        );
+        transactionRepository.save(transaction);
 
-        // Save idempotency key record
+        PharmacyDtos.StockAdjustmentResponse response =
+                new PharmacyDtos.StockAdjustmentResponse(
+                        txId,
+                        req.medicineId(),
+                        previousStock,
+                        newStock,
+                        "SUCCESS"
+                );
+
         if (idempotencyKey != null && !idempotencyKey.trim().isEmpty()) {
             try {
-                idempotencyRepository.save(new IdempotencyRecordDocument(
-                        UUID.randomUUID().toString(),
-                        idempotencyKey,
-                        "/api/v1/pharmacy/stock-adjustments",
-                        200,
-                        objectMapper.writeValueAsString(response)
-                ));
-            } catch (Exception ignored) {}
+                idempotencyRepository.save(
+                        new IdempotencyRecordDocument(
+                                UUID.randomUUID().toString(),
+                                idempotencyKey,
+                                "/api/v1/pharmacy/stock-adjustments",
+                                200,
+                                objectMapper.writeValueAsString(response)
+                        )
+                );
+            } catch (Exception ignored) {
+            }
         }
 
-        // Invalidate Redis caches after stock update
-        cacheService.evict("pharmacy:inventory");
-        cacheService.evict("medicines:all");
+        invalidateMedicineCaches();
 
         if (principal != null) {
             auditService.recordEvent(
@@ -227,56 +310,104 @@ public class PharmacyService {
                     "ADJUST_STOCK",
                     "Medicine",
                     req.medicineId(),
-                    type + " quantity: " + qty + " | Previous: " + previousStock + " | New: " + newStock
+                    type + " quantity: " + qty
+                            + " | Previous: " + previousStock
+                            + " | New: " + newStock
             );
         }
 
         return response;
     }
 
-    public PrescriptionDtos.PrescriptionResponse dispensePrescription(String prescriptionId, String idempotencyKey, UserPrincipal principal) {
-        // 1. Idempotency check
+    public PrescriptionDtos.PrescriptionResponse dispensePrescription(
+            String prescriptionId,
+            String idempotencyKey,
+            UserPrincipal principal) {
+
         if (idempotencyKey != null && !idempotencyKey.trim().isEmpty()) {
-            Optional<IdempotencyRecordDocument> existing = idempotencyRepository.findByIdempotencyKey(idempotencyKey);
+            Optional<IdempotencyRecordDocument> existing =
+                    idempotencyRepository.findByIdempotencyKey(idempotencyKey);
+
             if (existing.isPresent()) {
                 try {
-                    return objectMapper.readValue(existing.get().getResponsePayload(), PrescriptionDtos.PrescriptionResponse.class);
-                } catch (Exception ignored) {}
-            }
-        }
-
-        PrescriptionDocument rx = prescriptionRepository.findById(prescriptionId)
-                .orElseThrow(() -> new Exceptions.ResourceNotFoundException("Prescription not found with id: " + prescriptionId));
-
-        if ("DISPENSED".equalsIgnoreCase(rx.getStatus())) {
-            throw new Exceptions.ConflictException("Prescription " + rx.getPrescriptionNumber() + " has already been dispensed.");
-        }
-        if ("CANCELLED".equalsIgnoreCase(rx.getStatus())) {
-            throw new Exceptions.ConflictException("Cannot dispense cancelled prescription " + rx.getPrescriptionNumber());
-        }
-
-        // 2. Perform atomic stock decrement per medication with rollback support
-        record DecrementRecord(String medicineId, int quantity, int previousStock, int newStock) {}
-        List<DecrementRecord> executedDecrements = new ArrayList<>();
-
-        for (PrescriptionDocument.PrescriptionItem item : rx.getItems()) {
-            int qtyNeeded = item.getQuantity();
-            if (qtyNeeded <= 0) continue;
-
-            MedicineDocument targetMed = null;
-            if (item.getMedicineId() != null && !item.getMedicineId().isBlank()) {
-                targetMed = medicineRepository.findById(item.getMedicineId()).orElse(null);
-                if (targetMed == null) {
-                    targetMed = medicineRepository.findByCode(item.getMedicineId()).orElse(null);
+                    return objectMapper.readValue(
+                            existing.get().getResponsePayload(),
+                            PrescriptionDtos.PrescriptionResponse.class
+                    );
+                } catch (Exception ignored) {
                 }
             }
-            if (targetMed == null && item.getMedicineName() != null && !item.getMedicineName().isBlank()) {
-                targetMed = medicineRepository.findByNameContainingIgnoreCase(item.getMedicineName()).stream().findFirst().orElse(null);
+        }
+
+        PrescriptionDocument prescription = prescriptionRepository.findById(prescriptionId)
+                .orElseThrow(() ->
+                        new Exceptions.ResourceNotFoundException(
+                                "Prescription not found with id: " + prescriptionId
+                        ));
+
+        if ("DISPENSED".equalsIgnoreCase(prescription.getStatus())) {
+            throw new Exceptions.ConflictException(
+                    "Prescription " + prescription.getPrescriptionNumber()
+                            + " has already been dispensed."
+            );
+        }
+
+        if ("CANCELLED".equalsIgnoreCase(prescription.getStatus())) {
+            throw new Exceptions.ConflictException(
+                    "Cannot dispense cancelled prescription "
+                            + prescription.getPrescriptionNumber()
+            );
+        }
+
+        record DecrementRecord(
+                String medicineId,
+                int quantity,
+                int previousStock,
+                int newStock) {
+        }
+
+        List<DecrementRecord> executedDecrements = new ArrayList<>();
+
+        for (PrescriptionDocument.PrescriptionItem item : prescription.getItems()) {
+            int qtyNeeded = item.getQuantity();
+
+            if (qtyNeeded <= 0) {
+                continue;
             }
 
-            if (targetMed != null) {
-                Query query = Query.query(Criteria.where("_id").is(targetMed.getId()).and("currentStock").gte(qtyNeeded));
-                Update update = new Update().inc("currentStock", -qtyNeeded).set("updatedAt", Instant.now());
+            MedicineDocument targetMedicine = null;
+
+            if (item.getMedicineId() != null && !item.getMedicineId().isBlank()) {
+                targetMedicine = medicineRepository.findById(item.getMedicineId()).orElse(null);
+
+                if (targetMedicine == null) {
+                    targetMedicine = medicineRepository.findByCode(item.getMedicineId()).orElse(null);
+                }
+            }
+
+            if (targetMedicine == null
+                    && item.getMedicineName() != null
+                    && !item.getMedicineName().isBlank()) {
+
+                targetMedicine = medicineRepository
+                        .findByNameContainingIgnoreCase(item.getMedicineName())
+                        .stream()
+                        .findFirst()
+                        .orElse(null);
+            }
+
+            if (targetMedicine != null) {
+                Query query = Query.query(
+                        Criteria.where("_id")
+                                .is(targetMedicine.getId())
+                                .and("currentStock")
+                                .gte(qtyNeeded)
+                );
+
+                Update update = new Update()
+                        .inc("currentStock", -qtyNeeded)
+                        .set("updatedAt", Instant.now());
+
                 MedicineDocument updated = mongoTemplate.findAndModify(
                         query,
                         update,
@@ -285,59 +416,81 @@ public class PharmacyService {
                 );
 
                 if (updated == null) {
-                    // Rollback any previous decrements for this prescription
-                    for (DecrementRecord dec : executedDecrements) {
+                    for (DecrementRecord decrement : executedDecrements) {
                         mongoTemplate.findAndModify(
-                                Query.query(Criteria.where("_id").is(dec.medicineId())),
-                                new Update().inc("currentStock", dec.quantity()).set("updatedAt", Instant.now()),
+                                Query.query(
+                                        Criteria.where("_id").is(decrement.medicineId())
+                                ),
+                                new Update()
+                                        .inc("currentStock", decrement.quantity())
+                                        .set("updatedAt", Instant.now()),
                                 MedicineDocument.class
                         );
                     }
-                    MedicineDocument current = medicineRepository.findById(targetMed.getId()).orElse(targetMed);
-                    throw new Exceptions.ConflictException("Insufficient stock for '" + targetMed.getName() + "'. Available: " + current.getCurrentStock() + ", Required: " + qtyNeeded);
+
+                    MedicineDocument currentMedicine = medicineRepository
+                            .findById(targetMedicine.getId())
+                            .orElse(targetMedicine);
+
+                    throw new Exceptions.ConflictException(
+                            "Insufficient stock for '" + targetMedicine.getName()
+                                    + "'. Available: " + currentMedicine.getCurrentStock()
+                                    + ", Required: " + qtyNeeded
+                    );
                 }
 
-                executedDecrements.add(new DecrementRecord(targetMed.getId(), qtyNeeded, updated.getCurrentStock() + qtyNeeded, updated.getCurrentStock()));
-
-                // Persist transaction log
-                String txId = UUID.randomUUID().toString();
-                InventoryTransactionDocument tx = new InventoryTransactionDocument(
-                        txId,
-                        targetMed.getId(),
-                        "DISPENSE",
-                        qtyNeeded,
-                        updated.getCurrentStock() + qtyNeeded,
-                        updated.getCurrentStock(),
-                        rx.getId(),
-                        idempotencyKey,
-                        principal != null ? principal.getUsername() : "pharmacist"
+                executedDecrements.add(
+                        new DecrementRecord(
+                                targetMedicine.getId(),
+                                qtyNeeded,
+                                updated.getCurrentStock() + qtyNeeded,
+                                updated.getCurrentStock()
+                        )
                 );
-                transactionRepository.save(tx);
+
+                String txId = UUID.randomUUID().toString();
+
+                InventoryTransactionDocument transaction =
+                        new InventoryTransactionDocument(
+                                txId,
+                                targetMedicine.getId(),
+                                "DISPENSE",
+                                qtyNeeded,
+                                updated.getCurrentStock() + qtyNeeded,
+                                updated.getCurrentStock(),
+                                prescription.getId(),
+                                idempotencyKey,
+                                principal != null ? principal.getUsername() : "pharmacist"
+                        );
+
+                transactionRepository.save(transaction);
             }
         }
 
-        // 3. Mark prescription as dispensed
-        rx.setStatus("DISPENSED");
-        rx.setUpdatedAt(Instant.now());
-        prescriptionRepository.save(rx);
+        prescription.setStatus("DISPENSED");
+        prescription.setUpdatedAt(Instant.now());
 
-        // 4. Invalidate caches
-        cacheService.evict("pharmacy:inventory");
-        cacheService.evict("medicines:all");
+        prescriptionRepository.save(prescription);
 
-        PrescriptionDtos.PrescriptionResponse response = mapPrescriptionToDto(rx);
+        invalidateMedicineCaches();
 
-        // 5. Store idempotency record
+        PrescriptionDtos.PrescriptionResponse response =
+                mapPrescriptionToDto(prescription);
+
         if (idempotencyKey != null && !idempotencyKey.trim().isEmpty()) {
             try {
-                idempotencyRepository.save(new IdempotencyRecordDocument(
-                        UUID.randomUUID().toString(),
-                        idempotencyKey,
-                        "/api/v1/pharmacy/prescriptions/" + prescriptionId + "/dispense",
-                        200,
-                        objectMapper.writeValueAsString(response)
-                ));
-            } catch (Exception ignored) {}
+                idempotencyRepository.save(
+                        new IdempotencyRecordDocument(
+                                UUID.randomUUID().toString(),
+                                idempotencyKey,
+                                "/api/v1/pharmacy/prescriptions/"
+                                        + prescriptionId + "/dispense",
+                                200,
+                                objectMapper.writeValueAsString(response)
+                        )
+                );
+            } catch (Exception ignored) {
+            }
         }
 
         if (principal != null) {
@@ -346,57 +499,89 @@ public class PharmacyService {
                     principal.getUsername(),
                     "DISPENSE_PRESCRIPTION",
                     "Prescription",
-                    rx.getId(),
-                    "Dispensed prescription " + rx.getPrescriptionNumber() + " with " + executedDecrements.size() + " stock decrements"
+                    prescription.getId(),
+                    "Dispensed prescription "
+                            + prescription.getPrescriptionNumber()
+                            + " with " + executedDecrements.size()
+                            + " stock decrements"
             );
         }
 
         return response;
     }
 
-    private PrescriptionDtos.PrescriptionResponse mapPrescriptionToDto(PrescriptionDocument rx) {
+    private void invalidateMedicineCaches() {
+        cacheService.evict(PHARMACY_INVENTORY_CACHE_KEY);
+        cacheService.evict(ALL_MEDICINES_CACHE_KEY);
+    }
+
+    private PrescriptionDtos.PrescriptionResponse mapPrescriptionToDto(
+            PrescriptionDocument prescription) {
+
         String doctorName = "Dr. Specialist";
-        DoctorDocument doc = doctorRepository.findById(rx.getDoctorId()).orElse(null);
-        if (doc != null) {
-            UserDocument u = userRepository.findById(doc.getUserId()).orElse(null);
-            if (u != null) doctorName = u.getFullName();
+
+        DoctorDocument doctor = doctorRepository
+                .findById(prescription.getDoctorId())
+                .orElse(null);
+
+        if (doctor != null) {
+            UserDocument doctorUser = userRepository
+                    .findById(doctor.getUserId())
+                    .orElse(null);
+
+            if (doctorUser != null) {
+                doctorName = doctorUser.getFullName();
+            }
         }
 
         List<PrescriptionDtos.PrescriptionItemDto> itemDtos = new ArrayList<>();
-        for (PrescriptionDocument.PrescriptionItem item : rx.getItems()) {
-            itemDtos.add(new PrescriptionDtos.PrescriptionItemDto(
-                    item.getMedicineId(),
-                    item.getMedicineName(),
-                    item.getDosage(),
-                    item.getFrequency(),
-                    item.getDurationDays(),
-                    item.getInstructions(),
-                    item.getQuantity()
-            ));
+
+        for (PrescriptionDocument.PrescriptionItem item : prescription.getItems()) {
+            itemDtos.add(
+                    new PrescriptionDtos.PrescriptionItemDto(
+                            item.getMedicineId(),
+                            item.getMedicineName(),
+                            item.getDosage(),
+                            item.getFrequency(),
+                            item.getDurationDays(),
+                            item.getInstructions(),
+                            item.getQuantity()
+                    )
+            );
         }
 
         String patientName = "Patient";
-        if (rx.getPatientId() != null) {
-            PatientDocument p = patientRepository.findById(rx.getPatientId()).orElse(null);
-            if (p != null && p.getUserId() != null) {
-                UserDocument u = userRepository.findById(p.getUserId()).orElse(null);
-                if (u != null && u.getFullName() != null && !u.getFullName().isBlank()) {
-                    patientName = u.getFullName();
+
+        if (prescription.getPatientId() != null) {
+            PatientDocument patient = patientRepository
+                    .findById(prescription.getPatientId())
+                    .orElse(null);
+
+            if (patient != null && patient.getUserId() != null) {
+                UserDocument patientUser = userRepository
+                        .findById(patient.getUserId())
+                        .orElse(null);
+
+                if (patientUser != null
+                        && patientUser.getFullName() != null
+                        && !patientUser.getFullName().isBlank()) {
+
+                    patientName = patientUser.getFullName();
                 }
             }
         }
 
         return new PrescriptionDtos.PrescriptionResponse(
-                rx.getId(),
-                rx.getPrescriptionNumber(),
-                rx.getPatientId(),
+                prescription.getId(),
+                prescription.getPrescriptionNumber(),
+                prescription.getPatientId(),
                 patientName,
-                rx.getAppointmentId(),
-                rx.getDoctorId(),
+                prescription.getAppointmentId(),
+                prescription.getDoctorId(),
                 doctorName,
-                rx.getStatus(),
+                prescription.getStatus(),
                 itemDtos,
-                rx.getCreatedAt()
+                prescription.getCreatedAt()
         );
     }
 }
