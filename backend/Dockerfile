@@ -28,7 +28,7 @@ USER aarogya:aarogya
 EXPOSE 8000
 
 ENV SERVER_PORT=8000 \
-    SPRING_DATA_MONGODB_URI=mongodb://db:27017/aarogya \
+    MONGODB_URI=mongodb://mongos:27017/aarogya \
     SPRING_DATA_REDIS_HOST=redis \
     SPRING_DATA_REDIS_PORT=6379
 

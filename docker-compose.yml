@@ -1,80 +1,125 @@
-version: '3.8'
-
 services:
-  # ---------------------------------------------------------------------------
-  # 1. Authoritative Data Source of Truth (MongoDB 7.0 Community)
-  # ---------------------------------------------------------------------------
-  db:
-    image: mongo:7.0
-    container_name: aarogya-mongodb
+  configsvr:
+    image: mongo:${MONGO_IMAGE_TAG:-7.0}
     restart: unless-stopped
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongo_data:/data/db
+    command: mongod --configsvr --replSet ${MONGO_CONFIG_REPLICA_SET:-configRS} --port ${MONGO_CONFIG_PORT:-27019} --bind_ip_all
+    ports: ["${MONGO_CONFIG_PORT:-27019}:${MONGO_CONFIG_PORT:-27019}"]
+    volumes: ["mongo_config_data:/data/configdb"]
     healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      test: ["CMD", "mongosh", "--quiet", "--port", "27019", "--eval", "db.adminCommand('ping').ok"]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 20
 
-  # ---------------------------------------------------------------------------
-  # 2. Redis Key-Value Store & Rate Limiting Cache
-  # ---------------------------------------------------------------------------
+  shard1:
+    image: mongo:${MONGO_IMAGE_TAG:-7.0}
+    restart: unless-stopped
+    command: mongod --shardsvr --replSet ${MONGO_SHARD1_REPLICA_SET:-shard1RS} --port ${MONGO_SHARD1_PORT:-27018} --bind_ip_all
+    volumes: ["mongo_shard1_data:/data/db"]
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--port", "27018", "--eval", "db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  shard2:
+    image: mongo:${MONGO_IMAGE_TAG:-7.0}
+    restart: unless-stopped
+    command: mongod --shardsvr --replSet ${MONGO_SHARD2_REPLICA_SET:-shard2RS} --port ${MONGO_SHARD2_PORT:-27020} --bind_ip_all
+    volumes: ["mongo_shard2_data:/data/db"]
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--port", "27020", "--eval", "db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  shard3:
+    image: mongo:${MONGO_IMAGE_TAG:-7.0}
+    restart: unless-stopped
+    command: mongod --shardsvr --replSet ${MONGO_SHARD3_REPLICA_SET:-shard3RS} --port ${MONGO_SHARD3_PORT:-27021} --bind_ip_all
+    volumes: ["mongo_shard3_data:/data/db"]
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--port", "27021", "--eval", "db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  mongos:
+    image: mongo:${MONGO_IMAGE_TAG:-7.0}
+    restart: unless-stopped
+    command: mongos --configdb ${MONGO_CONFIG_REPLICA_SET:-configRS}/configsvr:${MONGO_CONFIG_PORT:-27019} --port ${MONGOS_PORT:-27017} --bind_ip_all
+    ports: ["${MONGOS_PORT:-27017}:${MONGOS_PORT:-27017}"]
+    volumes: ["./scripts/mongodb:/scripts:ro"]
+    depends_on:
+      configsvr:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--port", "27017", "--eval", "db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  mongo-init:
+    image: mongo:${MONGO_IMAGE_TAG:-7.0}
+    restart: "no"
+    environment:
+      MONGODB_DATABASE: ${MONGODB_DATABASE:-aarogya}
+      MONGO_CONFIG_REPLICA_SET: ${MONGO_CONFIG_REPLICA_SET:-configRS}
+      MONGO_SHARD1_REPLICA_SET: ${MONGO_SHARD1_REPLICA_SET:-shard1RS}
+      MONGO_SHARD2_REPLICA_SET: ${MONGO_SHARD2_REPLICA_SET:-shard2RS}
+      MONGO_SHARD3_REPLICA_SET: ${MONGO_SHARD3_REPLICA_SET:-shard3RS}
+      MONGO_CONFIG_PORT: ${MONGO_CONFIG_PORT:-27019}
+      MONGO_SHARD1_PORT: ${MONGO_SHARD1_PORT:-27018}
+      MONGO_SHARD2_PORT: ${MONGO_SHARD2_PORT:-27020}
+      MONGO_SHARD3_PORT: ${MONGO_SHARD3_PORT:-27021}
+      MONGOS_PORT: ${MONGOS_PORT:-27017}
+    volumes: ["./scripts/mongodb:/scripts:ro"]
+    entrypoint: ["/bin/sh", "/scripts/init-sharded-cluster.sh"]
+    depends_on:
+      configsvr: { condition: service_healthy }
+      shard1: { condition: service_healthy }
+      shard2: { condition: service_healthy }
+      shard3: { condition: service_healthy }
+      mongos: { condition: service_started }
+
   redis:
     image: redis:7-alpine
     container_name: aarogya-redis
     restart: unless-stopped
-    ports:
-      - "6379:6379"
+    ports: ["${REDIS_PORT:-6379}:6379"]
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 5s
       retries: 5
 
-  # ---------------------------------------------------------------------------
-  # 3. Backend REST API Core (Java 21 / Spring Boot 3.4.3)
-  # ---------------------------------------------------------------------------
   backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    build: { context: ./backend, dockerfile: Dockerfile }
     container_name: aarogya-backend
     restart: unless-stopped
     environment:
       SERVER_PORT: ${SERVER_PORT:-8000}
-      MONGODB_URI: mongodb://db:27017/aarogya
+      MONGODB_URI: ${MONGODB_INTERNAL_URI:-mongodb://mongos:27017/aarogya}
+      MONGODB_DATABASE: ${MONGODB_DATABASE:-aarogya}
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      SPRING_DATA_MONGODB_URI: mongodb://db:27017/aarogya
-      SPRING_DATA_REDIS_HOST: redis
-      SPRING_DATA_REDIS_PORT: 6379
       AAROGYA_SECURITY_JWT_SECRET: ${AAROGYA_SECURITY_JWT_SECRET:?Set AAROGYA_SECURITY_JWT_SECRET in your environment}
-    ports:
-      - "${SERVER_PORT:-8000}:8000"
+    ports: ["${SERVER_PORT:-8000}:8000"]
     depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      mongo-init: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
 
-  # ---------------------------------------------------------------------------
-  # 4. Frontend Client Application (React 19 + TypeScript + Vite)
-  # ---------------------------------------------------------------------------
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
+    build: { context: ./frontend, dockerfile: Dockerfile }
     container_name: aarogya-frontend
     restart: unless-stopped
-    ports:
-      - "5173:5173"
+    ports: ["${FRONTEND_PORT:-5173}:5173"]
     environment:
-      VITE_API_BASE_URL: http://localhost:8000
-    depends_on:
-      - backend
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000}
+    depends_on: [backend]
 
 volumes:
-  mongo_data:
-    name: aarogya_mongo_data
+  mongo_config_data:
+  mongo_shard1_data:
+  mongo_shard2_data:
+  mongo_shard3_data:

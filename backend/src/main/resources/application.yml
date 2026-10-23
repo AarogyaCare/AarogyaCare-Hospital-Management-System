@@ -7,7 +7,7 @@ spring:
 
   data:
     mongodb:
-      uri: ${MONGODB_URI:mongodb://localhost:27017/aarogya}
+      uri: ${MONGODB_URI:mongodb://${MONGOS_HOST:localhost}:${MONGOS_PORT:27017}/${MONGODB_DATABASE:aarogya}}
       auto-index-creation: true
 
     redis:
