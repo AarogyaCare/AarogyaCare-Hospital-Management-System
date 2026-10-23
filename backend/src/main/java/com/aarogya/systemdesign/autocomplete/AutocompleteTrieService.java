@@ -101,6 +101,7 @@ public class AutocompleteTrieService {
         totalTerms.set(0);
         totalNodes.set(1);
         vocabularyVersion.incrementAndGet();
+        cacheService.evictByPrefix("ac:");
 
         // 1. Departments
         List<DepartmentDocument> depts = departmentRepository.findAll();

@@ -10,6 +10,7 @@ import { api, PatientDto } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { HospitalDoctor, mapDoctorResponse, deduplicateDoctors } from '../services/doctorMapping';
 import { calculatePatientAge } from '../utils/age';
+import AutocompleteSearch from '../components/AutocompleteSearch';
 
 const formatSlotTime = (value: unknown) => {
   const slotStart = String(value ?? '').trim();
@@ -43,6 +44,7 @@ export default function BookAppointment() {
   // Form states
   const [selectedSpecialty, setSelectedSpecialty] = useState(initialSpecialty);
   const [selectedDoctorId, setSelectedDoctorId] = useState(initialDoctorId);
+  const [doctorSearch, setDoctorSearch] = useState('');
   const [doctorList, setDoctorList] = useState<HospitalDoctor[]>([]);
   const [isDoctorsLoading, setIsDoctorsLoading] = useState(true);
   const [doctorLoadError, setDoctorLoadError] = useState('');
@@ -157,6 +159,7 @@ export default function BookAppointment() {
           || backendDoctors[0];
         if (initialDoctor) {
           setSelectedDoctorId(initialDoctor.id);
+          setDoctorSearch(initialDoctor.name);
           setSelectedSpecialty(initialSpecialty || initialDoctor.departmentName);
         }
       })
@@ -478,13 +481,32 @@ export default function BookAppointment() {
 
               <div>
                 <label className="text-xs font-semibold text-slate-700 block mb-2">Available Specialists</label>
+                <AutocompleteSearch
+                  value={doctorSearch}
+                  onChange={(value) => {
+                    setDoctorSearch(value);
+                    if (!doctorList.some((item) => item.name.toLowerCase() === value.toLowerCase())) setSelectedDoctorId('');
+                  }}
+                  onSelect={(suggestion) => {
+                    if (suggestion.type === 'DOCTOR') {
+                      setSelectedDoctorId(suggestion.id);
+                      setDoctorSearch(suggestion.text);
+                      setSelectedTime('');
+                    } else {
+                      setSelectedSpecialty(suggestion.text);
+                    }
+                  }}
+                  allowedTypes={['DOCTOR', 'DEPARTMENT', 'SPECIALIZATION']}
+                  placeholder="Search for a specialist..."
+                  className="mb-3"
+                />
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {filteredDoctors.map((doc) => {
                     const isSelected = selectedDoctorId === doc.id;
                     return (
                       <div
                         key={doc.id}
-                        onClick={() => setSelectedDoctorId(doc.id)}
+                        onClick={() => { setSelectedDoctorId(doc.id); setDoctorSearch(doc.name); setSelectedTime(''); }}
                         className={`p-4 rounded-2xl border cursor-pointer transition flex items-center gap-3 ${
                           isSelected
                             ? 'bg-teal-50 border-[#178B8B] ring-2 ring-[#178B8B]/20 shadow-xs'

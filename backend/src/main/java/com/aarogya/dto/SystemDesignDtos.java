@@ -149,8 +149,24 @@ public class SystemDesignDtos {
         @JsonProperty("routed_cache_node") String routedCacheNode,
         @JsonProperty("cache_hit") boolean cacheHit,
         @JsonProperty("cache_key") String cacheKey,
-        @JsonProperty("search_latency_ms") long searchLatencyMs
-    ) {}
+        @JsonProperty("search_latency_ms") long searchLatencyMs,
+        @JsonProperty("cache_status") String cacheStatus,
+        @JsonProperty("cache_tier") String cacheTier
+    ) {
+        public MedicalKnowledgeSearchResponse(
+                String query,
+                String category,
+                String specialty,
+                int totalResults,
+                List<MedicalKnowledgeItemDto> items,
+                String routedCacheNode,
+                boolean cacheHit,
+                String cacheKey,
+                long searchLatencyMs) {
+            this(query, category, specialty, totalResults, items, routedCacheNode, cacheHit, cacheKey, searchLatencyMs,
+                    cacheHit ? "HIT" : "MISS", "REDIS");
+        }
+    }
 
     public record KnowledgeSourceDto(
         String id,

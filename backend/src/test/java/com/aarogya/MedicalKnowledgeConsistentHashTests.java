@@ -166,4 +166,51 @@ public class MedicalKnowledgeConsistentHashTests {
         assertTrue(hasCdc, "Must include cdc.gov as approved source");
         assertTrue(hasMohfw, "Must include mohfw.gov.in as approved source");
     }
+
+    @Test
+    @DisplayName("Consistent Hashing: simulateNodeRemoval must not mutate production ring state")
+    void testIsolatedSimulation() {
+        int initialNodesCount = hashRing.getPhysicalNodeCount();
+        int initialVnodesCount = hashRing.getTotalVnodeCount();
+        assertTrue(hashRing.getPhysicalNodes().contains("redis-cache-c"));
+
+        var simResults = hashRing.simulateNodeRemoval("redis-cache-c", List.of("key-1", "key-2", "key-3", "key-4", "key-5"));
+        assertNotNull(simResults);
+        assertEquals("redis-cache-c", simResults.get("removed_node"));
+        assertEquals(5, simResults.get("total_keys"));
+
+        // Production ring state must remain identical after simulation!
+        assertEquals(initialNodesCount, hashRing.getPhysicalNodeCount(), "Physical node count must be unchanged after simulation");
+        assertEquals(initialVnodesCount, hashRing.getTotalVnodeCount(), "Total vnode count must be unchanged after simulation");
+        assertTrue(hashRing.getPhysicalNodes().contains("redis-cache-c"), "Simulated removed node must still be present in production ring");
+    }
+
+    @Test
+    @DisplayName("Consistent Hashing: Adding duplicate node must be idempotent")
+    void testDuplicateNodeHandling() {
+        int vnodeCount = hashRing.getTotalVnodeCount();
+        hashRing.addNode("redis-cache-a"); // Already exists
+        assertEquals(vnodeCount, hashRing.getTotalVnodeCount(), "Adding duplicate node must not increase vnodes");
+    }
+
+    @Test
+    @DisplayName("Redis Telemetry: Medical knowledge search returns cache_status and cache_tier")
+    void testRealRedisTelemetry() {
+        crawlerService.evictKnowledgeCaches();
+        String uniqueQ = "telemetry-test-" + System.currentTimeMillis();
+
+        // 1st request -> MISS, REDIS tier
+        SystemDesignDtos.MedicalKnowledgeSearchResponse resp1 = crawlerService.searchMedicalKnowledge(uniqueQ, "ALL", "ALL");
+        assertFalse(resp1.cacheHit());
+        assertEquals("MISS", resp1.cacheStatus());
+        assertEquals("REDIS", resp1.cacheTier());
+        assertTrue(resp1.searchLatencyMs() >= 1);
+
+        // 2nd request -> HIT, REDIS tier
+        SystemDesignDtos.MedicalKnowledgeSearchResponse resp2 = crawlerService.searchMedicalKnowledge(uniqueQ, "ALL", "ALL");
+        assertTrue(resp2.cacheHit());
+        assertEquals("HIT", resp2.cacheStatus());
+        assertEquals("REDIS", resp2.cacheTier());
+        assertEquals(resp1.routedCacheNode(), resp2.routedCacheNode());
+    }
 }

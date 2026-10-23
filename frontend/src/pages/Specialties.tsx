@@ -5,6 +5,7 @@ import {
   Baby, ShieldAlert, ActivitySquare, Search, ArrowRight
 } from 'lucide-react';
 import { specialtiesData } from '../data/specialties';
+import AutocompleteSearch from '../components/AutocompleteSearch';
 
 export default function Specialties() {
   const [search, setSearch] = useState('');
@@ -45,16 +46,21 @@ export default function Specialties() {
         </p>
 
         {/* Search */}
-        <div className="mt-8 max-w-xl relative">
-          <Search className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search symptoms or departments (e.g. stroke, arrhythmia, robotic knee, asthma)..."
-            className="w-full pl-11 pr-4 py-3 bg-white text-slate-800 rounded-2xl shadow-md text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-teal-400"
-          />
-        </div>
+        <AutocompleteSearch
+          value={search}
+          onChange={setSearch}
+          onSelect={(suggestion) => {
+            setSearch(suggestion.text);
+            const element = document.getElementById(suggestion.id) || document.getElementById(
+              specialtiesData.find((item) => item.name.toLowerCase() === suggestion.text.toLowerCase())?.id || ''
+            );
+            element?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }}
+          allowedTypes={['DEPARTMENT', 'SPECIALIZATION']}
+          placeholder="Search symptoms or departments (e.g. stroke, arrhythmia, robotic knee, asthma)..."
+          className="mt-8 max-w-xl"
+          inputClassName="bg-white rounded-2xl py-3 text-sm"
+        />
       </div>
 
       {/* Specialties Grid (Frosted Glass Cards) */}

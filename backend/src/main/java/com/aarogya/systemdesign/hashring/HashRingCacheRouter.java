@@ -28,6 +28,10 @@ public class HashRingCacheRouter {
         }
     }
 
+    public String getNodeForKey(String key) {
+        return hashRing.getNode(key);
+    }
+
     public String routeKey(String key) {
         String targetNode = hashRing.getNode(key);
         if (targetNode != null) {
@@ -36,22 +40,41 @@ public class HashRingCacheRouter {
         return targetNode;
     }
 
-    public <T> T get(String logicalKey, Class<T> clazz) {
+    public record RoutedCacheResult<T>(
+            String targetNode,
+            String partitionedKey,
+            CacheService.CacheGetResult<T> result
+    ) {}
+
+    public <T> RoutedCacheResult<T> getWithTelemetry(String logicalKey, Class<T> clazz) {
         String targetNode = routeKey(logicalKey);
         String partitionedKey = "part:" + targetNode + ":" + logicalKey;
-        return cacheService.get(partitionedKey, clazz);
+        CacheService.CacheGetResult<T> res = cacheService.getWithTelemetry(partitionedKey, clazz);
+        return new RoutedCacheResult<>(targetNode, partitionedKey, res);
+    }
+
+    public <T> T get(String logicalKey, Class<T> clazz) {
+        return getWithTelemetry(logicalKey, clazz).result().value();
     }
 
     public void set(String logicalKey, Object value, Duration ttl) {
-        String targetNode = routeKey(logicalKey);
-        String partitionedKey = "part:" + targetNode + ":" + logicalKey;
-        cacheService.set(partitionedKey, value, ttl);
+        String targetNode = hashRing.getNode(logicalKey);
+        if (targetNode != null) {
+            String partitionedKey = "part:" + targetNode + ":" + logicalKey;
+            cacheService.set(partitionedKey, value, ttl);
+        }
     }
 
     public void evict(String logicalKey) {
-        String targetNode = routeKey(logicalKey);
-        String partitionedKey = "part:" + targetNode + ":" + logicalKey;
-        cacheService.evict(partitionedKey);
+        String targetNode = hashRing.getNode(logicalKey);
+        if (targetNode != null) {
+            String partitionedKey = "part:" + targetNode + ":" + logicalKey;
+            cacheService.evict(partitionedKey);
+        }
+    }
+
+    public void evictByPrefix(String prefix) {
+        cacheService.evictByPrefix(prefix);
     }
 
     public void addNode(String nodeName) {

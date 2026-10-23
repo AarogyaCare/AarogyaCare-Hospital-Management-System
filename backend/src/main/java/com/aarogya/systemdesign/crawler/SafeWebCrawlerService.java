@@ -4,6 +4,7 @@ import com.aarogya.dto.SystemDesignDtos;
 import com.aarogya.exception.Exceptions;
 import com.aarogya.model.CrawlerDocument;
 import com.aarogya.repository.CrawlerDocumentRepository;
+import com.aarogya.systemdesign.cache.CacheService;
 import com.aarogya.systemdesign.hashring.HashRingCacheRouter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.codec.digest.DigestUtils;
@@ -175,7 +176,14 @@ public class SafeWebCrawlerService {
                     if (location.isPresent() && current.depth < maxAllowedDepth) {
                         String redirectUrl = resolveRedirectUrl(currentUrl, location.get());
                         if (redirectUrl != null && !visited.contains(redirectUrl)) {
-                            queue.add(new CrawlTask(redirectUrl, current.depth + 1));
+                            try {
+                                validateUrlAndSsrfProtection(redirectUrl);
+                                queue.add(new CrawlTask(redirectUrl, current.depth + 1));
+                            } catch (Exceptions.BadRequestException ex) {
+                                blocked++;
+                                ssrfBlockedCounter.incrementAndGet();
+                                logger.warn("Crawler SSRF shield blocked redirect URL: {} - Reason: {}", redirectUrl, ex.getMessage());
+                            }
                         }
                     }
                     continue;
@@ -184,6 +192,28 @@ public class SafeWebCrawlerService {
                 if (statusCode != 200) {
                     logger.warn("Crawler received non-200 status {} for URL: {}", statusCode, currentUrl);
                     continue;
+                }
+
+                // Validate Content-Type: only parse HTML or text content
+                Optional<String> contentType = response.headers().firstValue("Content-Type");
+                if (contentType.isPresent()) {
+                    String ct = contentType.get().toLowerCase();
+                    if (!ct.contains("text") && !ct.contains("html") && !ct.contains("xml")) {
+                        logger.info("Skipping non-HTML/text content type {} for URL {}", ct, currentUrl);
+                        continue;
+                    }
+                }
+
+                // Check Content-Length to enforce response size limit (max 2MB)
+                Optional<String> contentLength = response.headers().firstValue("Content-Length");
+                if (contentLength.isPresent()) {
+                    try {
+                        long length = Long.parseLong(contentLength.get());
+                        if (length > 2 * 1024 * 1024) {
+                            logger.warn("Skipping oversized response ({} bytes) for URL {}", length, currentUrl);
+                            continue;
+                        }
+                    } catch (NumberFormatException ignored) {}
                 }
 
                 String rawHtml = response.body();
@@ -200,8 +230,28 @@ public class SafeWebCrawlerService {
                 List<CrawlerDocument.ArticleSection> sections = extractStructuredSections(rawHtml, readableText);
                 List<String> safeOutlinks = extractHyperlinks(rawHtml, currentUrl);
 
-                // Content Deduplication
-                if (crawlerRepository.findByContentHash(contentHash).isEmpty()) {
+                // Content Deduplication & Safe Persistence (Handles URL uniqueness + contentHash uniqueness)
+                Optional<CrawlerDocument> existingByHash = crawlerRepository.findByContentHash(contentHash);
+                Optional<CrawlerDocument> existingByUrl = crawlerRepository.findByUrl(currentUrl);
+
+                if (existingByHash.isPresent() && existingByUrl.isPresent()
+                        && existingByHash.get().getId().equals(existingByUrl.get().getId())) {
+                    duplicateCount.incrementAndGet();
+                } else if (existingByUrl.isPresent()) {
+                    CrawlerDocument doc = existingByUrl.get();
+                    doc.setTitle(title);
+                    doc.setContentSnippet(snippet);
+                    doc.setContentHash(contentHash);
+                    doc.setFullText(readableText);
+                    doc.setSections(sections);
+                    doc.setSafeOutlinks(safeOutlinks);
+                    doc.setIndexedAt(Instant.now());
+                    doc.setStatusCode(statusCode);
+                    crawlerRepository.save(doc);
+                    documentsIndexed++;
+                } else if (existingByHash.isPresent()) {
+                    duplicateCount.incrementAndGet();
+                } else {
                     CrawlerDocument doc = new CrawlerDocument(
                             UUID.randomUUID().toString(),
                             currentUrl,
@@ -235,8 +285,6 @@ public class SafeWebCrawlerService {
                                 Instant.now()
                         ));
                     }
-                } else {
-                    duplicateCount.incrementAndGet();
                 }
 
                 // Discover outbound links within allowed depth
@@ -275,26 +323,28 @@ public class SafeWebCrawlerService {
     /**
      * Consistent Hashing Routed Medical Knowledge Search.
      * Routes search query deterministically to a ring node namespace,
-     * utilizes Redis caching with fallback, and returns node telemetry.
+     * utilizes Redis caching with fallback, and returns real telemetry.
      */
     public SystemDesignDtos.MedicalKnowledgeSearchResponse searchMedicalKnowledge(
             String query, String category, String specialty) {
-        long start = System.currentTimeMillis();
+        long startNs = System.nanoTime();
 
         String normQuery = (query == null) ? "" : query.trim();
         String normCategory = (category == null || category.isBlank() || "ALL".equalsIgnoreCase(category)) ? "ALL" : category.trim().toUpperCase();
         String normSpecialty = (specialty == null || specialty.isBlank() || "ALL".equalsIgnoreCase(specialty)) ? "ALL" : specialty.trim().toUpperCase();
 
         String cacheKey = "medknowledge:v1:q:" + normQuery.toLowerCase() + ":c:" + normCategory + ":s:" + normSpecialty;
-        String routedNode = hashRingRouter.routeKey(cacheKey);
 
-        // Check Hash Ring Cache Router
-        String cachedJson = hashRingRouter.get(cacheKey, String.class);
-        if (cachedJson != null) {
+        // Check Hash Ring Cache Router with telemetry
+        HashRingCacheRouter.RoutedCacheResult<String> cacheLookup = hashRingRouter.getWithTelemetry(cacheKey, String.class);
+        String routedNode = cacheLookup.targetNode();
+        CacheService.CacheGetResult<String> cacheResult = cacheLookup.result();
+
+        if (cacheResult.isHit()) {
             try {
                 SystemDesignDtos.MedicalKnowledgeSearchResponse cachedResp =
-                        objectMapper.readValue(cachedJson, SystemDesignDtos.MedicalKnowledgeSearchResponse.class);
-                long latency = System.currentTimeMillis() - start;
+                        objectMapper.readValue(cacheResult.value(), SystemDesignDtos.MedicalKnowledgeSearchResponse.class);
+                long latencyMs = Math.max(1, (System.nanoTime() - startNs) / 1_000_000L);
                 return new SystemDesignDtos.MedicalKnowledgeSearchResponse(
                         normQuery,
                         normCategory,
@@ -304,14 +354,16 @@ public class SafeWebCrawlerService {
                         routedNode,
                         true, // Cache HIT
                         cacheKey,
-                        latency
+                        latencyMs,
+                        "HIT",
+                        cacheResult.tier().name()
                 );
             } catch (Exception ex) {
                 logger.warn("Failed to deserialize cached knowledge response for key {}: {}", cacheKey, ex.getMessage());
             }
         }
 
-        // Cache MISS: Query MongoDB
+        // Cache MISS or Redis Error: Query MongoDB
         List<CrawlerDocument> allDocs = crawlerRepository.findAll();
         List<SystemDesignDtos.MedicalKnowledgeItemDto> items = new ArrayList<>();
 
@@ -372,7 +424,10 @@ public class SafeWebCrawlerService {
             ));
         }
 
-        long latency = System.currentTimeMillis() - start;
+        long latencyMs = Math.max(1, (System.nanoTime() - startNs) / 1_000_000L);
+        String cacheStatus = cacheResult.isError() ? "ERROR" : "MISS";
+        String cacheTier = cacheResult.tier().name();
+
         SystemDesignDtos.MedicalKnowledgeSearchResponse response =
                 new SystemDesignDtos.MedicalKnowledgeSearchResponse(
                         normQuery,
@@ -383,7 +438,9 @@ public class SafeWebCrawlerService {
                         routedNode,
                         false, // Cache MISS
                         cacheKey,
-                        latency
+                        latencyMs,
+                        cacheStatus,
+                        cacheTier
                 );
 
         // Store into consistent-hash cache ring partition
@@ -530,6 +587,13 @@ public class SafeWebCrawlerService {
             } catch (Exception ignored) {}
         }
         trackedCacheKeys.clear();
+
+        // Evict all knowledge search partition keys across all nodes in the ring
+        for (String node : hashRingRouter.getNodes()) {
+            try {
+                hashRingRouter.evictByPrefix("part:" + node + ":medknowledge:");
+            } catch (Exception ignored) {}
+        }
     }
 
     public List<CrawlerDocument> searchIndexedDocuments(String query) {

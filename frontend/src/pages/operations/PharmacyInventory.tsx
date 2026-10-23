@@ -6,6 +6,7 @@ import {
 import { api, InventoryItemDto, PrescriptionDto, PatientDto } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import PrescriptionDispensingSlipModal from '../../components/PrescriptionDispensingSlipModal';
+import AutocompleteSearch from '../../components/AutocompleteSearch';
 
 export default function PharmacyInventory() {
   const { user } = useAuth();
@@ -397,16 +398,15 @@ export default function PharmacyInventory() {
               </div>
 
               {/* Text Search */}
-              <div className="relative w-full sm:w-48">
-                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search drug or code..."
-                  className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-[#002043]"
-                />
-              </div>
+              <AutocompleteSearch
+                value={search}
+                onChange={setSearch}
+                onSelect={(suggestion) => setSearch(suggestion.text)}
+                allowedTypes={['MEDICINE']}
+                placeholder="Search drug or code..."
+                className="w-full sm:w-48"
+                inputClassName="py-1.5 pl-8"
+              />
             </div>
           </div>
 

@@ -189,21 +189,33 @@ export default function WebCrawlerLab() {
       </div>
 
       {/* Production Workflow Integration Banner */}
-      <div className="p-4 rounded-2xl bg-slate-900 border border-cyan-800/50 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-300 shadow-md">
+      <div className="p-4 rounded-2xl bg-white border border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-600 shadow-sm">
         <div className="flex items-center gap-2.5">
-          <Globe className="w-4 h-4 text-cyan-400 shrink-0" />
+          <div className="w-8 h-8 rounded-lg bg-teal-50 border border-teal-200 flex items-center justify-center shrink-0">
+            <Globe className="w-4 h-4 text-teal-600" />
+          </div>
           <span>
-            <strong className="text-white font-semibold">Real-World Hospital Integration:</strong> This crawler is now deployed directly into patient and physician workflows with in-app structured previews and consistent hashing routing.
+            <strong className="text-slate-900 font-semibold">Real-World Hospital Integration:</strong>{' '}
+            Crawler results are deployed into patient and physician workflows with in-app structured previews and consistent-hashing cache routing.
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <Link to="/portal/knowledge" className="px-3 py-1.5 bg-cyan-700 hover:bg-cyan-600 text-white font-semibold rounded-lg transition shadow-sm">
+          <Link
+            to="/portal/knowledge"
+            className="px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-lg transition shadow-sm text-xs"
+          >
             Patient Hub
           </Link>
-          <Link to="/clinical/knowledge" className="px-3 py-1.5 bg-indigo-700 hover:bg-indigo-600 text-white font-semibold rounded-lg transition shadow-sm">
+          <Link
+            to="/clinical/knowledge"
+            className="px-3 py-1.5 bg-[#002043] hover:bg-[#17365d] text-white font-semibold rounded-lg transition shadow-sm text-xs"
+          >
             Doctor Workspace
           </Link>
-          <Link to="/admin/knowledge-sources" className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold rounded-lg transition shadow-sm">
+          <Link
+            to="/admin/knowledge-sources"
+            className="px-3 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 font-semibold rounded-lg transition shadow-sm text-xs"
+          >
             Manage Sources
           </Link>
         </div>

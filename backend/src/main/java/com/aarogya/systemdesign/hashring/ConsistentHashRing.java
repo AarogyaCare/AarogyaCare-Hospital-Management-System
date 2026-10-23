@@ -28,17 +28,23 @@ public class ConsistentHashRing {
     }
 
     public synchronized void addNode(String node) {
+        if (node == null || node.isBlank() || physicalNodes.contains(node)) {
+            return;
+        }
         physicalNodes.add(node);
         for (int i = 0; i < numberOfReplicas; i++) {
-            circle.put(hash(node + "#vnode_" + i), node);
+            long h = hash(node + "#vnode_" + i);
+            while (circle.containsKey(h) && !node.equals(circle.get(h))) {
+                h++; // Deliberately handle hash collision without silent overwriting
+            }
+            circle.put(h, node);
         }
     }
 
     public synchronized void removeNode(String node) {
+        if (node == null) return;
         physicalNodes.remove(node);
-        for (int i = 0; i < numberOfReplicas; i++) {
-            circle.remove(hash(node + "#vnode_" + i));
-        }
+        circle.values().removeIf(node::equals);
     }
 
     public String getNode(String key) {
@@ -67,33 +73,50 @@ public class ConsistentHashRing {
 
     /**
      * Measures key remapping percentage when a node is removed from the ring.
+     * CRITICAL: Uses an isolated copy of the ring to prevent exposing temporary
+     * ring mutation or downtime to concurrent production requests.
      */
     public Map<String, Object> simulateNodeRemoval(String nodeToRemove, List<String> sampleKeys) {
+        if (sampleKeys == null || sampleKeys.isEmpty()) {
+            return Map.of("removed_node", nodeToRemove, "total_keys", 0, "remapped_keys", 0, "remapped_percent", 0.0);
+        }
+
         Map<String, String> beforeMap = new HashMap<>();
         for (String key : sampleKeys) {
             beforeMap.put(key, getNode(key));
         }
 
-        removeNode(nodeToRemove);
-
-        int remappedCount = 0;
-        for (String key : sampleKeys) {
-            String afterNode = getNode(key);
-            if (!Objects.equals(beforeMap.get(key), afterNode)) {
-                remappedCount++;
+        // Create an isolated simulated ring WITHOUT mutating the live production circle
+        SortedMap<Long, String> simCircle = new ConcurrentSkipListMap<>();
+        for (Map.Entry<Long, String> entry : circle.entrySet()) {
+            if (!entry.getValue().equals(nodeToRemove)) {
+                simCircle.put(entry.getKey(), entry.getValue());
             }
         }
 
-        // Restore node to ring
-        addNode(nodeToRemove);
+        int remappedCount = 0;
+        if (!simCircle.isEmpty()) {
+            for (String key : sampleKeys) {
+                long h = hash(key);
+                SortedMap<Long, String> tailMap = simCircle.tailMap(h);
+                long targetHash = tailMap.isEmpty() ? simCircle.firstKey() : tailMap.firstKey();
+                String afterNode = simCircle.get(targetHash);
+                if (!Objects.equals(beforeMap.get(key), afterNode)) {
+                    remappedCount++;
+                }
+            }
+        }
 
         double remappedPercent = (remappedCount / (double) sampleKeys.size()) * 100.0;
+        int activeNodeCount = physicalNodes.size();
+        double theoreticalPercent = activeNodeCount > 0 ? (1.0 / activeNodeCount) * 100.0 : 0.0;
+
         Map<String, Object> results = new HashMap<>();
         results.put("removed_node", nodeToRemove);
         results.put("total_keys", sampleKeys.size());
         results.put("remapped_keys", remappedCount);
         results.put("remapped_percent", Math.round(remappedPercent * 100.0) / 100.0);
-        results.put("expected_theoretical_percent", Math.round((1.0 / (physicalNodes.size())) * 10000.0) / 100.0);
+        results.put("expected_theoretical_percent", Math.round(theoreticalPercent * 100.0) / 100.0);
         return results;
     }
 

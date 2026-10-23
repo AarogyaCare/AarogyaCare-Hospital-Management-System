@@ -95,18 +95,20 @@ export default function ConsistentHashingLab() {
       </div>
 
       {/* Production Integration Callout */}
-      <div className="p-4 rounded-2xl bg-slate-900 border border-teal-800/50 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-300 shadow-md">
+      <div className="p-4 rounded-2xl bg-white border border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-600 shadow-sm">
         <div className="flex items-center gap-2.5">
-          <Activity className="w-4 h-4 text-teal-400 shrink-0" />
+          <div className="w-8 h-8 rounded-lg bg-teal-50 border border-teal-200 flex items-center justify-center shrink-0">
+            <Activity className="w-4 h-4 text-teal-600" />
+          </div>
           <span>
-            <strong className="text-white font-semibold">Live System Design Routing:</strong> Real medical guideline queries and patient searches are routed through this Consistent Hash Ring into partitioned Redis namespaces (<code className="text-teal-300 font-mono">part:node:key</code>).
+            <strong className="text-slate-900 font-semibold">Live System Design Routing:</strong> Real medical guideline queries and patient searches are routed through this Consistent Hash Ring into partitioned Redis namespaces (<code className="text-teal-700 bg-teal-50 px-1 py-0.5 rounded border border-teal-200 font-mono">part:node:key</code>).
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <Link to="/clinical/knowledge" className="px-3 py-1.5 bg-teal-600 hover:bg-teal-500 text-white font-semibold rounded-lg transition shadow-sm">
+          <Link to="/clinical/knowledge" className="px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-lg transition shadow-sm text-xs">
             View Live Clinical Router
           </Link>
-          <Link to="/portal/knowledge" className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold rounded-lg transition shadow-sm">
+          <Link to="/portal/knowledge" className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 font-semibold rounded-lg transition shadow-sm text-xs">
             Patient Hub
           </Link>
         </div>

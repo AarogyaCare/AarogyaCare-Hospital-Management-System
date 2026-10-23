@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { api } from '../services/api';
 import { HospitalDoctor, mapDoctorResponse, deduplicateDoctors } from '../services/doctorMapping';
+import AutocompleteSearch from '../components/AutocompleteSearch';
 
 const localToday = () => {
   const now = new Date();
@@ -117,16 +118,21 @@ export default function Booking() {
           <div className="lg:col-span-7 space-y-4">
             {/* Search & Specialty Filter */}
             <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row gap-3 items-center justify-between">
-              <div className="relative w-full sm:w-64">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search doctor or specialty..."
-                  className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-[#002043] focus:outline-none"
-                />
-              </div>
+              <AutocompleteSearch
+                value={search}
+                onChange={setSearch}
+                onSelect={(suggestion) => {
+                  if (suggestion.type === 'DOCTOR') {
+                    const doctor = doctorList.find((item) => item.id === suggestion.id);
+                    if (doctor) setSelectedDoctor(doctor);
+                  } else {
+                    setSelectedSpecialty(suggestion.text);
+                  }
+                }}
+                allowedTypes={['DOCTOR', 'DEPARTMENT', 'SPECIALIZATION']}
+                placeholder="Search doctor or specialty..."
+                className="w-full sm:w-64"
+              />
 
               <select
                 value={selectedSpecialty}

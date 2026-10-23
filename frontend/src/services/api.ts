@@ -115,6 +115,21 @@ export interface MedicineDto {
   is_low_stock?: boolean;
 }
 
+export type AutocompleteSuggestionType = 'DOCTOR' | 'DEPARTMENT' | 'MEDICINE' | 'SPECIALIZATION';
+
+export interface AutocompleteSuggestion {
+  text: string;
+  type: AutocompleteSuggestionType;
+  id: string;
+  metadata: Record<string, unknown>;
+}
+
+export interface AutocompleteResponse {
+  query: string;
+  total_matches: number;
+  suggestions: AutocompleteSuggestion[];
+}
+
 export interface InventoryItemDto {
   id: string;
   code: string;
@@ -300,6 +315,8 @@ export interface MedicalKnowledgeSearchResponse {
   cache_hit: boolean;
   cache_key: string;
   search_latency_ms: number;
+  cache_status?: 'HIT' | 'MISS' | 'ERROR' | string;
+  cache_tier?: 'REDIS' | 'MEMORY_FALLBACK' | 'UNAVAILABLE' | string;
 }
 
 export interface KnowledgeSourceDto {
@@ -521,8 +538,8 @@ export const api = {
   emergencyStats: () => apiRequest<EmergencySurgeStatsDto>('/api/v1/emergency/stats'),
 
   // Labs & System Design
-  autocomplete: (q: string, limit = 10) => apiRequest<any>(`/api/v1/autocomplete?q=${encodeURIComponent(q)}&limit=${limit}`),
-  autocompleteStats: () => apiRequest<any>('/api/v1/autocomplete/stats'),
+  autocomplete: (q: string, limit = 10) => apiRequest<AutocompleteResponse>(`/api/v1/autocomplete?q=${encodeURIComponent(q)}&limit=${limit}`),
+  autocompleteStats: () => apiRequest<Record<string, number>>('/api/v1/autocomplete/stats'),
   rebuildAutocomplete: () => apiRequest<any>('/api/v1/autocomplete/rebuild', { method: 'POST' }),
   createShortLink: (payload: unknown) => apiRequest<any>('/api/v1/short-links', { method: 'POST', body: JSON.stringify(payload) }),
   resolveShortLink: (code: string) => apiRequest<any>(`/api/v1/short-links/${encodeURIComponent(code)}`),
@@ -610,4 +627,3 @@ export const api = {
       '/api/v1/knowledge/cache/stats',
     ),
 };
-

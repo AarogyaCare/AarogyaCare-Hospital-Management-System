@@ -8,6 +8,7 @@ import { api, AppointmentDto, PatientDto, CreatePatientDto } from '../../service
 import { HospitalDoctor, mapDoctorResponse, deduplicateDoctors } from '../../services/doctorMapping';
 import { calculatePatientAge } from '../../utils/age';
 import { useAuth } from '../../context/AuthContext';
+import AutocompleteSearch from '../../components/AutocompleteSearch';
 
 export default function ReceptionFrontDesk() {
   const { user } = useAuth();
@@ -35,6 +36,7 @@ export default function ReceptionFrontDesk() {
 
   // Walk-in booking
   const [selectedDoctorId, setSelectedDoctorId] = useState('');
+  const [doctorSearch, setDoctorSearch] = useState('');
   const [availableSlots, setAvailableSlots] = useState<any[]>([]);
   const [selectedSlotId, setSelectedSlotId] = useState('');
   const [reasonForVisit, setReasonForVisit] = useState('General Walk-In OPD Consultation');
@@ -55,6 +57,7 @@ export default function ReceptionFrontDesk() {
       setAppointments(aptRes);
       if (mappedDocs.length > 0 && !selectedDoctorId) {
         setSelectedDoctorId(mappedDocs[0].id);
+        setDoctorSearch(mappedDocs[0].name);
       }
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Could not fetch reception data.', 'error');
@@ -69,7 +72,11 @@ export default function ReceptionFrontDesk() {
 
   // When selected doctor changes, fetch available slots for today
   useEffect(() => {
-    if (!selectedDoctorId) return;
+    setSelectedSlotId('');
+    if (!selectedDoctorId) {
+      setAvailableSlots([]);
+      return;
+    }
     const today = new Date().toISOString().slice(0, 10);
     api.slots(selectedDoctorId, today)
       .then((slots) => {
@@ -357,17 +364,20 @@ const res = await api.createEmergency({
 
             <div>
               <label className="text-slate-500 block mb-1">Consulting Specialist</label>
-              <select
-                value={selectedDoctorId}
-                onChange={(e) => setSelectedDoctorId(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-medium"
-              >
-                {doctors.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.name} • {d.specialty} ({d.opdRoom})
-                  </option>
-                ))}
-              </select>
+              <AutocompleteSearch
+                value={doctorSearch}
+                onChange={(value) => {
+                  setDoctorSearch(value);
+                  if (!doctors.some((doctor) => doctor.name.toLowerCase() === value.toLowerCase())) setSelectedDoctorId('');
+                }}
+                onSelect={(suggestion) => {
+                  if (suggestion.type !== 'DOCTOR') return;
+                  setDoctorSearch(suggestion.text);
+                  setSelectedDoctorId(suggestion.id);
+                }}
+                allowedTypes={['DOCTOR']}
+                placeholder="Search consulting specialist..."
+              />
             </div>
 
             <div>

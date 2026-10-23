@@ -31,13 +31,42 @@ public class CacheService {
         this.objectMapper = objectMapper;
     }
 
+    public enum CacheStatus {
+        HIT,
+        MISS,
+        ERROR
+    }
+
+    public enum CacheTier {
+        REDIS,
+        MEMORY_FALLBACK,
+        UNAVAILABLE
+    }
+
+    public record CacheGetResult<T>(
+            T value,
+            CacheStatus status,
+            CacheTier tier,
+            String errorMessage
+    ) {
+        public boolean isHit() { return status == CacheStatus.HIT && value != null; }
+        public boolean isError() { return status == CacheStatus.ERROR; }
+    }
+
     public <T> T get(String key, Class<T> clazz) {
+        return getWithTelemetry(key, clazz).value();
+    }
+
+    public <T> CacheGetResult<T> getWithTelemetry(String key, Class<T> clazz) {
         try {
             Object value = redisTemplate.opsForValue().get(key);
 
             if (value != null) {
                 cacheHits.incrementAndGet();
-                return convertValue(value, clazz);
+                return new CacheGetResult<>(convertValue(value, clazz), CacheStatus.HIT, CacheTier.REDIS, null);
+            } else {
+                cacheMisses.incrementAndGet();
+                return new CacheGetResult<>(null, CacheStatus.MISS, CacheTier.REDIS, null);
             }
         } catch (Exception ex) {
             logger.warn("Redis get failed for key: {}. Falling back to memory: {}", key, ex.getMessage());
@@ -48,14 +77,14 @@ public class CacheService {
         if (fallback != null) {
             try {
                 cacheHits.incrementAndGet();
-                return convertValue(fallback, clazz);
+                return new CacheGetResult<>(convertValue(fallback, clazz), CacheStatus.HIT, CacheTier.MEMORY_FALLBACK, null);
             } catch (Exception ex) {
                 logger.warn("Local cache conversion failed for key: {}", key);
             }
         }
 
-        cacheMisses.incrementAndGet();
-        return null;
+        // Redis was unreachable and key was not in fallback cache -> Real Error
+        return new CacheGetResult<>(null, CacheStatus.ERROR, CacheTier.UNAVAILABLE, "Redis connection failed and key not found in local fallback");
     }
 
     public <T> T getOrLoad(String key, Duration ttl, Class<T> clazz, Supplier<T> dbLoader) {
@@ -141,11 +170,23 @@ public class CacheService {
 
     public void evictByPrefix(String prefix) {
         try {
-            Set<String> keys = redisTemplate.keys(prefix + "*");
-
-            if (keys != null && !keys.isEmpty()) {
-                redisTemplate.delete(keys);
-            }
+            redisTemplate.execute((org.springframework.data.redis.core.RedisCallback<Void>) connection -> {
+                org.springframework.data.redis.core.ScanOptions options =
+                        org.springframework.data.redis.core.ScanOptions.scanOptions().match(prefix + "*").count(100).build();
+                org.springframework.data.redis.core.Cursor<byte[]> cursor = connection.keyCommands().scan(options);
+                java.util.List<byte[]> keysToDelete = new java.util.ArrayList<>();
+                while (cursor.hasNext()) {
+                    keysToDelete.add(cursor.next());
+                    if (keysToDelete.size() >= 100) {
+                        connection.keyCommands().del(keysToDelete.toArray(new byte[0][]));
+                        keysToDelete.clear();
+                    }
+                }
+                if (!keysToDelete.isEmpty()) {
+                    connection.keyCommands().del(keysToDelete.toArray(new byte[0][]));
+                }
+                return null;
+            });
         } catch (Exception ex) {
             logger.warn("Redis cache invalidation failed for prefix: {}", prefix);
         }
